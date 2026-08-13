@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bar Manager - Login</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <div class="login-box">
+        <h2>🍹 Acceso al Bar</h2>
+        <input type="email" id="email" placeholder="Correo electrónico" value="admin@bar.com">
+        <input type="password" id="password" placeholder="Contraseña" value="123456">
+        <button onclick="iniciarSesion()">Ingresar</button>
+        <p id="mensaje-error" style="color: red; display: none; font-size: 0.9em;"></p>
+    </div>
+
+    <script>
+        async function iniciarSesion() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorP = document.getElementById('mensaje-error');
+
+            try {
+                // ACA ESTÁ EL CAMBIO A RUTA RELATIVA
+                const respuesta = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const datos = await respuesta.json();
+
+                if (respuesta.ok) {
+                    localStorage.setItem('bar_token', datos.token);
+                    window.location.href = 'index.html';
+                } else {
+                    errorP.textContent = datos.error;
+                    errorP.style.display = 'block';
+                }
+            } catch (error) {
+                console.error("Error al conectar:", error);
+            }
+        }
+    </script>
+</body>
+</html>

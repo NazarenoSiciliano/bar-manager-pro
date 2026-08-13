@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bar Manager Pro - Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: #333; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        
+        .navbar { background-color: #2c3e50; color: white; padding: 15px 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .navbar h1 { margin: 0; font-size: 1.5em; }
+        .nav-links { display: flex; gap: 10px; }
+        .menu-btn { background-color: transparent; color: #ecf0f1; border: none; padding: 10px 15px; font-size: 16px; cursor: pointer; border-radius: 5px; transition: background 0.3s; }
+        .menu-btn:hover, .menu-btn.activo { background-color: #34495e; font-weight: bold; border-bottom: 3px solid #3498db; }
+        .btn-logout { background-color: #e74c3c; font-weight: bold; }
+        .btn-logout:hover { background-color: #c0392b; }
+
+        .main-content { padding: 30px; overflow-y: auto; flex: 1; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box;}
+        .seccion { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .seccion.activa { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .card-formulario { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .formulario-inline { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+        .formulario-inline > div { flex: 1; min-width: 150px; }
+        .formulario-inline input, .formulario-inline select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        button.btn-accion { background-color: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button.btn-accion:hover { background-color: #2980b9; }
+
+        .grid-productos { list-style-type: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+        .grid-productos li { background: white; padding: 20px; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 5px; position: relative; }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.2em; opacity: 0.6; padding: 0; }
+        .btn-icon:hover { opacity: 1; }
+
+        .lista-mezcla { list-style: none; padding: 0; }
+        .lista-mezcla li { background: #f8f9fa; padding: 10px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
+        .btn-danger-small { background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer; padding: 5px 10px; }
+
+        .caja-costo { background: #e8f4f8; padding: 20px; border-radius: 8px; border-left: 6px solid #2ecc71; margin-bottom: 20px; text-align: center; }
+        .caja-costo h2 { margin: 0; color: #27ae60; font-size: 2em; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h1>🍸 Bar Manager Pro</h1>
+        <div class="nav-links">
+            <button class="menu-btn activo" onclick="cambiarSeccion('sec-inventario', this)">📦 Inventario</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-recetas', this)">🍹 Recetas</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-eventos', this)">📊 Eventos</button>
+        </div>
+        <button class="menu-btn btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+    </div>
+
+    <div class="main-content">
+
+        <!-- VISTA 1: INVENTARIO -->
+        <div id="sec-inventario" class="seccion activa">
+            <h2>Gestión de Inventario</h2>
+            <div class="card-formulario">
+                <h3 id="titulo-form-producto">➕ Ingresar Nuevo Producto</h3>
+                <div class="formulario-inline">
+                    <div><input type="text" id="nuevo-nombre" placeholder="Nombre (ej. Limón, Gin)"></div>
+                    <div>
+                        <select id="nuevo-tipo">
+                            <optgroup label="Insumos"><option value="Fruta">Fruta Fresca</option><option value="Jarabe/Almíbar">Jarabe</option><option value="Garnish">Garnish</option></optgroup>
+                            <optgroup label="Bebidas"><option value="Bebida Blanca">Bebida Blanca</option><option value="Licor">Licor</option><option value="Jugo/Gaseosa">Mixer</option></optgroup>
+                        </select>
+                    </div>
+                    <div><input type="number" id="nuevo-precio" placeholder="Costo Total ($)"></div>
+                    <button id="btn-guardar-producto" class="btn-accion" onclick="guardarProducto()">Guardar</button>
+                    <button id="btn-cancelar-edicion" class="btn-accion" style="background-color: #95a5a6; display: none;" onclick="cancelarEdicion()">Cancelar</button>
+                </div>
+            </div>
+            <ul id="lista-categorias" class="grid-productos"></ul>
+        </div>
+
+        <!-- VISTA 2: CREADOR Y LISTADO DE RECETAS -->
+        <div id="sec-recetas" class="seccion">
+            <h2>Laboratorio de Recetas</h2>
+            
+            <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                <div class="card-formulario" style="flex: 1; min-width: 300px;">
+                    <h3>🍹 Nueva Mezcla</h3>
+                    <input type="text" id="nombre-trago" placeholder="Nombre del Trago (ej. Mojito)" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                    <div class="formulario-inline">
+                        <div style="flex: 2;"><select id="select-ingredientes"><option value="">Cargando...</option></select></div>
+                        <div style="flex: 1;"><input type="number" id="cantidad-ingrediente" placeholder="Cant."></div>
+                        <button class="btn-accion" style="background-color: #f39c12;" onclick="agregarALaMezcla()">Añadir</button>
+                    </div>
+                    <h4 style="margin-top: 20px;">En la coctelera:</h4>
+                    <ul id="lista-mezcla" class="lista-mezcla"></ul>
+                    <button class="btn-accion" style="width: 100%; margin-top: 20px; background-color: #2ecc71;" onclick="guardarReceta()">💾 Guardar Receta Final</button>
+                </div>
+                
+                <div style="flex: 2; min-width: 400px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0;">📚 Recetario Creado</h3>
+                        <button class="btn-accion" style="background-color: #2ecc71; padding: 8px 15px;" onclick="cargarRecetasGuardadas()">🔄 Refrescar</button>
+                    </div>
+                    <ul id="lista-recetas-guardadas" class="grid-productos" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 3: COTIZADOR DE EVENTOS MULTI-TRAGO -->
+        <div id="sec-eventos" class="seccion">
+            <h2>Planificador Financiero y Logístico</h2>
+            <div class="card-formulario" style="max-width: 700px;">
+                <div class="formulario-inline">
+                    <div style="flex: 2;"><select id="select-tragos-evento"><option value="">Cargando tragos...</option></select></div>
+                    <div style="flex: 1;"><input type="number" id="cantidad-servicios" placeholder="Cant. Servicios"></div>
+                    <button class="btn-accion" style="background-color: #f39c12;" onclick="agregarTragoAlEvento()">Añadir al Menú</button>
+                </div>
+                <h4 style="margin-top: 20px;">Menú seleccionado para el evento:</h4>
+                <ul id="lista-tragos-evento" class="lista-mezcla"></ul>
+                <button class="btn-accion" style="width: 100%; margin-top: 20px;" onclick="calcularEvento()">📊 Calcular Costos y Logística</button>
+            </div>
+
+            <div id="resultado-evento" style="background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: none;">
+                <h3 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">📋 Reporte de Producción</h3>
+                
+                <div id="detalle-logistica"></div>
+
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;">
+                <h4>🛒 Lista de Compras a Granel:</h4>
+                <ul id="lista-compras-evento" style="padding-left: 20px; line-height: 1.8;"></ul>
+                
+                <button class="btn-accion" style="background-color: #e74c3c; width: 100%; margin-top: 20px;" onclick="exportarPDF()">📄 Descargar Reporte en PDF</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        if (!localStorage.getItem('bar_token') && window.location.pathname.endsWith('index.html')) window.location.href = 'login.html';
+        function cerrarSesion() { localStorage.removeItem('bar_token'); window.location.href = 'login.html'; }
+        function cambiarSeccion(idSeccion, boton) {
+            document.querySelectorAll('.seccion').forEach(sec => sec.classList.remove('activa'));
+            document.getElementById(idSeccion).classList.add('activa');
+            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('activo'));
+            boton.classList.add('activo');
+        }
+
+        let mezclaActual = []; let tragosEventoActual = []; let productoEnEdicion = null; 
+
+        // --- INVENTARIO ---
+        async function cargarCategorias() {
+            try {
+                // CAMBIO A RUTA RELATIVA
+                const respuesta = await fetch('/api/productos');
+                const datos = await respuesta.json(); 
+                const lista = document.getElementById('lista-categorias'); const selectIngredientes = document.getElementById('select-ingredientes');
+                lista.innerHTML = ''; selectIngredientes.innerHTML = '<option value="">Seleccioná un ingrediente...</option>'; 
+                datos.forEach(producto => {
+                    lista.innerHTML += `
+                        <li>
+                            <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 5px;">
+                                <button class="btn-icon" onclick="prepararEdicion(${producto.id}, '${producto.nombre}', '${producto.tipo}', ${producto.precio})" title="Editar">✏️</button>
+                                <button class="btn-icon" onclick="borrarProducto(${producto.id}, '${producto.nombre}')" title="Eliminar">🗑️</button>
+                            </div>
+                            <strong style="font-size: 1.2em; margin-top: 15px;">${producto.nombre}</strong>
+                            <span style="color: #666; font-size: 0.9em;">📁 ${producto.tipo}</span>
+                            <span style="color: #2ecc71; font-weight: bold; font-size: 1.1em; margin-top: 5px;">💰 $${producto.precio}</span>
+                        </li>`;
+                    selectIngredientes.innerHTML += `<option value="${producto.id}">${producto.nombre}</option>`;
+                });
+            } catch (error) { console.error("Error:", error); }
+        }
+
+        function prepararEdicion(id, nombre, tipo, precio) {
+            productoEnEdicion = id; document.getElementById('nuevo-nombre').value = nombre;
+            const selectTipo = document.getElementById('nuevo-tipo');
+            for(let i=0; i < selectTipo.options.length; i++) if(selectTipo.options[i].value === tipo) selectTipo.selectedIndex = i;
+            document.getElementById('nuevo-precio').value = precio;
+            document.getElementById('titulo-form-producto').innerText = "✏️ Editar Producto";
+            document.getElementById('btn-guardar-producto').innerText = "Actualizar";
+            document.getElementById('btn-cancelar-edicion').style.display = "block"; window.scrollTo(0, 0); 
+        }
+
+        function cancelarEdicion() {
+            productoEnEdicion = null; document.getElementById('nuevo-nombre').value = ''; document.getElementById('nuevo-precio').value = '';
+            document.getElementById('titulo-form-producto').innerText = "➕ Ingresar Nuevo Producto";
+            document.getElementById('btn-guardar-producto').innerText = "Guardar";
+            document.getElementById('btn-cancelar-edicion').style.display = "none";
+        }
+
+        async function guardarProducto() {
+            const nombre = document.getElementById('nuevo-nombre').value; const tipo = document.getElementById('nuevo-tipo').value; const precio = parseFloat(document.getElementById('nuevo-precio').value);
+            if (!nombre || !precio) return alert("Completá nombre y valor.");
+            try {
+                // CAMBIO A RUTA RELATIVA
+                const url = productoEnEdicion ? `/api/productos/${productoEnEdicion}` : '/api/productos';
+                const metodo = productoEnEdicion ? 'PUT' : 'POST';
+                const res = await fetch(url, { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, tipo, precio }) });
+                if (res.ok) { cancelarEdicion(); cargarCategorias(); }
+            } catch (error) { console.error("Error:", error); }
+        }
+
+        async function borrarProducto(id, nombre) {
+            if (!confirm(`¿Estás seguro de que querés borrar "${nombre}"?`)) return;
+            try {
+                // CAMBIO A RUTA RELATIVA
+                const res = await fetch(`/api/productos/${id}`, { method: 'DELETE' });
+                if (res.ok) cargarCategorias(); else alert("No se pudo eliminar: " + (await res.json()).error);
+            } catch (error) { console.error("Error:", error); }
+        }
+
+        // --- RECETAS ---
+        function agregarALaMezcla() {
+            const select = document.getElementById('select-ingredientes');
+            if (!select.value || !document.getElementById('cantidad-ingrediente').value) return;
+            mezclaActual.push({ ingrediente_id: select.value, nombre: select.options[select.selectedIndex].text, cantidad: document.getElementById('cantidad-ingrediente').value });
+            document.getElementById('cantidad-ingrediente').value = ''; select.value = ''; actualizarVistaMezcla();
+        }
+        function actualizarVistaMezcla() {
+            const ul = document.getElementById('lista-mezcla'); ul.innerHTML = ''; 
+            mezclaActual.forEach((item, index) => { ul.innerHTML += `<li>${item.cantidad} de ${item.nombre} <button class="btn-danger-small" onclick="quitarDeMezcla(${index})">X</button></li>`; });
+        }
+        function quitarDeMezcla(index) { mezclaActual.splice(index, 1); actualizarVistaMezcla(); }
+        
+        async function guardarReceta() {
+            const nombreTrago = document.getElementById('nombre-trago').value;
+            if (!nombreTrago || mezclaActual.length === 0) return alert("Faltan datos.");
+            try {
+                // CAMBIO A RUTA RELATIVA
+                const res = await fetch('/api/recetas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nombreTrago, ingredientes: mezclaActual }) });
+                if (res.ok) { alert("¡Receta guardada!"); document.getElementById('nombre-trago').value = ''; mezclaActual = []; actualizarVistaMezcla(); cargarTragosParaEvento(); cargarRecetasGuardadas(); }
+            } catch (error) { console.error("Error:", error); }
+        }
+
+        async function cargarRecetasGuardadas() {
+            try {
+                // CAMBIO A RUTA RELATIVA
+                const res = await fetch('/api/recetas-detalle');
+                const recetas = await res.json();
+                const lista = document.getElementById('lista-recetas-guardadas');
+                lista.innerHTML = '';
+                
+                recetas.forEach(receta => {
+                    let ingredientesHTML = receta.ingredientes.map(ing => `<li>• ${ing.cantidad} ${ing.unidad_medida} de ${ing.nombre}</li>`).join('');
+                    lista.innerHTML += `
+                        <li style="border-left: 5px solid #f39c12;">
+                            <strong style="font-size: 1.3em; color: #2c3e50;">🍸 ${receta.nombre}</strong>
+                            <span style="color: #e74c3c; font-weight: bold; font-size: 1.3em; margin: 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px;">Costo total: $${receta.costoTotal}</span>
+                            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9em; color: #555;">
+                                ${ingredientesHTML}
+                            </ul>
+                        </li>`;
+                });
+            } catch (error) { console.error("Error:", error); }
+        }
+
+        // --- EVENTOS ---
+        async function cargarTragosParaEvento() {
+            try {
+                // CAMBIO A RUTA RELATIVA
+                const res = await fetch('/api/tragos');
+                const tragos = await res.json();
+                const select = document.getElementById('select-tragos-evento'); select.innerHTML = '<option value="">Seleccioná un trago...</option>';
+                tragos.forEach(trago => { select.innerHTML += `<option value="${trago.id}">${trago.nombre}</option>`; });
+            } catch (error) { console.error("Error:", error); }
+        }
+
+        function agregarTragoAlEvento() {
+            const select = document.getElementById('select-tragos-evento'); const cant = document.getElementById('cantidad-servicios').value;
+            if (!select.value || !cant) return;
+            tragosEventoActual.push({ trago_id: select.value, nombre: select.options[select.selectedIndex].text, cantidad: parseInt(cant) });
+            document.getElementById('cantidad-servicios').value = ''; select.value = ''; actualizarVistaEvento();
+        }
+        function actualizarVistaEvento() {
+            const ul = document.getElementById('lista-tragos-evento'); ul.innerHTML = ''; 
+            tragosEventoActual.forEach((item, index) => { ul.innerHTML += `<li>${item.cantidad}x ${item.nombre} <button class="btn-danger-small" onclick="quitarTragoEvento(${index})">X</button></li>`; });
+        }
+        function quitarTragoEvento(index) { tragosEventoActual.splice(index, 1); actualizarVistaEvento(); }
+
+        async function calcularEvento() {
+            if (tragosEventoActual.length === 0) return alert("Agregá tragos al menú.");
+            try {
+                // CAMBIO A RUTA RELATIVA
+                const res = await fetch('/api/calcular-evento', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tragos_evento: tragosEventoActual }) });
+                const data = await res.json();
+
+                if (res.ok) {
+                    document.getElementById('resultado-evento').style.display = 'block';
+                    
+                    document.getElementById('detalle-logistica').innerHTML = `
+                        <div class="caja-costo">
+                            <p style="margin: 0; font-size: 1.2em; color: #555;">Costo de Insumos (Neto)</p>
+                            <h2>$ ${data.costoTotalEvento}</h2>
+                        </div>
+                        
+                        <p style="font-size: 1.1em;">🍸 Total de servicios a despachar: <strong>${data.totalTragos} tragos</strong></p>
+                        
+                        <h4 style="border-bottom: 2px solid #ccc; padding-bottom: 5px; color: #2c3e50; margin-top: 20px;">👥 Equipo de Trabajo Sugerido</h4>
+                        <p style="margin: 5px 0;">👉 <strong>${data.logistica.bartenders}</strong> Bartenders (1 cada 50 tragos)</p>
+                        <p style="margin: 5px 0;">👉 <strong>${data.logistica.runners}</strong> Runners / Repositores de hielo e insumos</p>
+
+                        <h4 style="border-bottom: 2px solid #ccc; padding-bottom: 5px; color: #2c3e50; margin-top: 20px;">🏗️ Estructura Física</h4>
+                        <p style="margin: 5px 0;">👉 <strong>${data.logistica.barras}</strong> Estaciones de Barra (1 cada 100 tragos)</p>
+                    `;
+
+                    const ul = document.getElementById('lista-compras-evento'); ul.innerHTML = '';
+                    data.listaCompras.forEach(item => ul.innerHTML += `<li><strong>${item.cantidadTotal} ${item.unidad}</strong> de ${item.ingrediente}</li>`);
+                }
+            } catch (error) { console.error("Error:", error); }
+        }
+
+        function exportarPDF() {
+            const elemento = document.getElementById('resultado-evento'); const botonPDF = elemento.querySelector('button'); botonPDF.style.display = 'none'; 
+            html2pdf().set({ margin: 15, filename: 'Cotizacion_BarManager.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(elemento).save().then(() => { botonPDF.style.display = 'block'; }); 
+        }
+
+        window.onload = () => { cargarCategorias(); cargarTragosParaEvento(); cargarRecetasGuardadas(); };
+    </script>
+</body>
+</html>
