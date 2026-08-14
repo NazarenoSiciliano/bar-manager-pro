@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
+app.use('/api', require('./routes/usuarios'));
 
 // Sistema de Logs de errores
 const logStream = fs.createWriteStream(path.join(__dirname, 'errores.log'), { flags: 'a' });
@@ -26,6 +27,7 @@ app.listen(PORT, () => {
     console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
 });
 const mysql = require('mysql2');
+
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
