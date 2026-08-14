@@ -299,26 +299,26 @@
         
         async function guardarReceta() {
             const n = document.getElementById('nombre-trago').value; if (!n || !mezclaActual.length) return Swal.fire('Atención', 'Ponéle un nombre al trago y agregá al menos un ingrediente.', 'warning');
-            if ((await fetch('/api/recetas', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre: n, ingredientes: mezclaActual }) })).ok) { 
+            if ((await fetch('/api/productos/recetas', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre: n, ingredientes: mezclaActual }) })).ok) { 
                 Swal.fire('¡Excelente!', 'Receta guardada con éxito.', 'success'); 
                 document.getElementById('nombre-trago').value = ''; mezclaActual = []; actMezcla(); carTra(); carRec(); 
             }
         }
 
         async function carRec() {
-            const res = await fetch('/api/recetas-detalle', { headers: getHeaders(false) });
+            const res = await fetch('/api/productos/recetas-detalle', { headers: getHeaders(false) });
             const recetas = await res.json();
             document.getElementById('lista-recetas-guardadas').innerHTML = recetas.map(r => `<li style="border-left: 5px solid #f39c12;"><button class="btn-icon" style="position: absolute; top: 15px; right: 15px;" onclick="borrarRecetaConfirm(${r.id}, '${r.nombre}')">🗑️</button><strong style="font-size: 1.3em;">🍸 ${r.nombre}</strong><span style="color: #e74c3c; font-weight: bold; font-size: 1.3em; margin: 10px 0;">Costo: $${r.costoTotal}</span><ul style="list-style: none; padding: 0; font-size: 0.9em; color: #555;">${r.ingredientes.map(i => `<li>• ${i.cantidad} ${i.unidad_medida} de ${i.nombre}</li>`).join('')}</ul></li>`).join('');
         }
 
         async function borrarRecetaConfirm(id, nombre) {
             const result = await Swal.fire({ title: `¿Borrar receta de ${nombre}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
-            if (result.isConfirmed) { await fetch(`/api/recetas/${id}`, { method: 'DELETE', headers: getHeaders(false) }); carRec(); carTra(); Toast.fire({ icon: 'success', title: 'Receta eliminada' }); }
+            if (result.isConfirmed) { await fetch(`/api/productos/recetas/${id}`, { method: 'DELETE', headers: getHeaders(false) }); carRec(); carTra(); Toast.fire({ icon: 'success', title: 'Receta eliminada' }); }
         }
 
         async function carTra() {
             const s = document.getElementById('select-tragos-evento'); s.innerHTML = '<option value="">Seleccioná...</option>';
-            (await (await fetch('/api/tragos', { headers: getHeaders(false) })).json()).forEach(t => s.innerHTML += `<option value="${t.id}">${t.nombre}</option>`);
+            (await (await fetch('/api/productos/tragos', { headers: getHeaders(false) })).json()).forEach(t => s.innerHTML += `<option value="${t.id}">${t.nombre}</option>`);
         }
 
         function agregarTragoAlEvento() { const s = document.getElementById('select-tragos-evento'); const c = document.getElementById('cantidad-servicios').value; if (!s.value || !c) return; tragosEventoActual.push({ trago_id: s.value, nombre: s.options[s.selectedIndex].text, cantidad: parseInt(c) }); document.getElementById('cantidad-servicios').value = ''; s.value = ''; actEv(); }
@@ -326,7 +326,7 @@
 
         async function calcularEvento() {
             if (!tragosEventoActual.length) return Swal.fire('Atención', 'Agregá al menos un trago al menú para cotizar.', 'info');
-            const res = await fetch('/api/calcular-evento', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ tragos_evento: tragosEventoActual }) });
+            const res = await fetch('/api/productos/calcular-evento', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ tragos_evento: tragosEventoActual }) });
             if (res.ok) {
                 const data = await res.json(); document.getElementById('resultado-evento').style.display = 'block';
                 document.getElementById('detalle-logistica').innerHTML = `<div class="caja-costo"><p style="margin: 0; color: #555;">Costo Neto Insumos</p><h2>$ ${data.costoTotalEvento}</h2></div><p style="font-size: 1.1em;">🍸 Tragos totales a despachar: <strong>${data.totalTragos}</strong></p><p style="margin: 5px 0;">👉 <strong>${data.logistica.bartenders}</strong> Bartenders (1 c/50 tragos)</p><p style="margin: 5px 0;">👉 <strong>${data.logistica.runners}</strong> Runners</p>`;
