@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../db'); // Asegúrate de que la ruta apunte correctamente a tu archivo de conexión
 
 // Ruta para Registrar Usuario
-router.post('/register', async (req, res) => {
+router.post('/registro', async (req, res) => {
     try {
         const { nombre, email, password } = req.body;
 
