@@ -9,10 +9,15 @@ router.post('/productos/bulk', ctrl.cargaMasiva);
 router.put('/productos/:id', ctrl.actualizarProducto);
 router.delete('/productos/:id', ctrl.eliminarProducto);
 
-// Categorías
-router.get('/categorias', ctrl.getCategorias);
-router.post('/categorias', ctrl.crearCategoria);
-
+router.get('/categorias', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM Categorias');
+        res.json(rows);
+    } catch (error) {
+        console.error('Error al cargar categorías:', error);
+        res.status(500).json({ error: 'Error al obtener categorías' });
+    }
+});
 // Recetas y Cotizador
 router.get('/tragos', ctrl.getTragos);
 router.get('/recetas-detalle', ctrl.getRecetasDetalle);
