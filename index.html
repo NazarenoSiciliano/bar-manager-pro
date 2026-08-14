@@ -5,39 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bar Manager Pro - Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- NUEVO: SweetAlert2 para alertas hermosas -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: #333; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        
-        .navbar { background-color: #2c3e50; color: white; padding: 15px 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .navbar { background-color: #2c3e50; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
         .navbar h1 { margin: 0; font-size: 1.5em; }
         .nav-links { display: flex; gap: 10px; }
-        .menu-btn { background-color: transparent; color: #ecf0f1; border: none; padding: 10px 15px; font-size: 16px; cursor: pointer; border-radius: 5px; transition: background 0.3s; }
-        .menu-btn:hover, .menu-btn.activo { background-color: #34495e; font-weight: bold; border-bottom: 3px solid #3498db; }
-        .btn-logout { background-color: #e74c3c; font-weight: bold; }
-        .btn-logout:hover { background-color: #c0392b; }
-
+        .menu-btn { background: transparent; color: #ecf0f1; border: none; padding: 10px 15px; font-size: 16px; cursor: pointer; border-radius: 5px; transition: background 0.3s; }
+        .menu-btn:hover, .menu-btn.activo { background: #34495e; font-weight: bold; border-bottom: 3px solid #3498db; }
+        .btn-logout { background: #e74c3c; font-weight: bold; }
         .main-content { padding: 30px; overflow-y: auto; flex: 1; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box;}
-        .seccion { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .seccion { display: none; animation: fadeIn 0.3s; }
         .seccion.activa { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
         .card-formulario { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .formulario-inline { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
         .formulario-inline > div { flex: 1; min-width: 150px; }
-        .formulario-inline input, .formulario-inline select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        
-        button.btn-accion { background-color: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button.btn-accion:hover { background-color: #2980b9; }
-
-        .grid-productos { list-style-type: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+        .formulario-inline input, .formulario-inline select, .formulario-inline textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button.btn-accion { background: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: background 0.3s;}
+        button.btn-accion:hover { opacity: 0.9; }
+        .grid-productos { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
         .grid-productos li { background: white; padding: 20px; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 5px; position: relative; }
-        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.2em; opacity: 0.6; padding: 0; }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.2em; opacity: 0.6; padding: 0; transition: opacity 0.2s;}
         .btn-icon:hover { opacity: 1; }
-
         .lista-mezcla { list-style: none; padding: 0; }
         .lista-mezcla li { background: #f8f9fa; padding: 10px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
-        .btn-danger-small { background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer; padding: 5px 10px; }
-
+        .btn-danger-small { background: #e74c3c; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;}
         .caja-costo { background: #e8f4f8; padding: 20px; border-radius: 8px; border-left: 6px solid #2ecc71; margin-bottom: 20px; text-align: center; }
         .caja-costo h2 { margin: 0; color: #27ae60; font-size: 2em; }
     </style>
@@ -49,38 +44,57 @@
         <div class="nav-links">
             <button class="menu-btn activo" onclick="cambiarSeccion('sec-inventario', this)">📦 Inventario</button>
             <button class="menu-btn" onclick="cambiarSeccion('sec-recetas', this)">🍹 Recetas</button>
-            <button class="menu-btn" onclick="cambiarSeccion('sec-eventos', this)">📊 Eventos</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-eventos', this)">📊 Cotizador</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-agenda', this)">📅 Agenda</button>
         </div>
         <button class="menu-btn btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
     </div>
 
     <div class="main-content">
 
-        <!-- VISTA 1: INVENTARIO -->
+        <!-- INVENTARIO -->
         <div id="sec-inventario" class="seccion activa">
             <h2>Gestión de Inventario</h2>
             <div class="card-formulario">
                 <h3 id="titulo-form-producto">➕ Ingresar Nuevo Producto</h3>
                 <div class="formulario-inline">
-                    <div><input type="text" id="nuevo-nombre" placeholder="Nombre (ej. Limón, Gin)"></div>
+                    <div><label>Nombre</label><input type="text" id="nuevo-nombre" placeholder="Ej. Limón, Gin"></div>
                     <div>
-                        <select id="nuevo-tipo">
-                            <optgroup label="Insumos"><option value="Fruta">Fruta Fresca</option><option value="Jarabe/Almíbar">Jarabe</option><option value="Garnish">Garnish</option></optgroup>
-                            <optgroup label="Bebidas"><option value="Bebida Blanca">Bebida Blanca</option><option value="Licor">Licor</option><option value="Jugo/Gaseosa">Mixer</option></optgroup>
+                        <label>Categoría</label>
+                        <div style="display: flex; gap: 5px; align-items: flex-end;">
+                            <select id="nuevo-tipo" style="flex: 1;"><option value="">Cargando...</option></select>
+                            <button class="btn-accion" style="padding: 10px; background-color: #2ecc71;" onclick="crearCategoria()" title="Crear Categoría Nueva">+</button>
+                        </div>
+                    </div>
+                    <div style="flex: 0.5;"><label>Cantidad</label><input type="number" id="nuevo-cantidad" placeholder="Ej. 1"></div>
+                    <div style="flex: 0.5;">
+                        <label>Unidad</label>
+                        <select id="nuevo-unidad">
+                            <option value="Litros">Litros (L)</option>
+                            <option value="ml">Mililitros (ml)</option>
+                            <option value="Kg">Kilogramos (Kg)</option>
+                            <option value="Gramos">Gramos (g)</option>
+                            <option value="Unidades">Unidades (u)</option>
                         </select>
                     </div>
-                    <div><input type="number" id="nuevo-precio" placeholder="Costo Total ($)"></div>
+                    <div><label>Costo Total ($)</label><input type="number" id="nuevo-precio" placeholder="Precio final"></div>
                     <button id="btn-guardar-producto" class="btn-accion" onclick="guardarProducto()">Guardar</button>
                     <button id="btn-cancelar-edicion" class="btn-accion" style="background-color: #95a5a6; display: none;" onclick="cancelarEdicion()">Cancelar</button>
+                </div>
+
+                <hr style="margin: 25px 0; border: 0; border-top: 1px dashed #ccc;">
+                <h4 style="margin-top: 0;">📥 Carga Masiva (Importar Excel)</h4>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <input type="file" id="archivo-excel" accept=".xlsx, .xls" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <button class="btn-accion" style="background-color: #8e44ad;" onclick="importarExcel()">Subir Excel</button>
                 </div>
             </div>
             <ul id="lista-categorias" class="grid-productos"></ul>
         </div>
 
-        <!-- VISTA 2: CREADOR Y LISTADO DE RECETAS -->
+        <!-- RECETAS -->
         <div id="sec-recetas" class="seccion">
             <h2>Laboratorio de Recetas</h2>
-            
             <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
                 <div class="card-formulario" style="flex: 1; min-width: 300px;">
                     <h3>🍹 Nueva Mezcla</h3>
@@ -98,14 +112,13 @@
                 <div style="flex: 2; min-width: 400px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h3 style="margin: 0;">📚 Recetario Creado</h3>
-                        <button class="btn-accion" style="background-color: #2ecc71; padding: 8px 15px;" onclick="cargarRecetasGuardadas()">🔄 Refrescar</button>
                     </div>
                     <ul id="lista-recetas-guardadas" class="grid-productos" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));"></ul>
                 </div>
             </div>
         </div>
 
-        <!-- VISTA 3: COTIZADOR DE EVENTOS MULTI-TRAGO -->
+        <!-- EVENTOS -->
         <div id="sec-eventos" class="seccion">
             <h2>Planificador Financiero y Logístico</h2>
             <div class="card-formulario" style="max-width: 700px;">
@@ -118,202 +131,226 @@
                 <ul id="lista-tragos-evento" class="lista-mezcla"></ul>
                 <button class="btn-accion" style="width: 100%; margin-top: 20px;" onclick="calcularEvento()">📊 Calcular Costos y Logística</button>
             </div>
-
-            <div id="resultado-evento" style="background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: none;">
-                <h3 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">📋 Reporte de Producción</h3>
-                
+            <div id="resultado-evento" style="background: white; padding: 30px; border-radius: 8px; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <h3 style="text-align: center; margin-bottom: 20px; color: #2c3e50;">📋 Reporte de Producción</h3>
                 <div id="detalle-logistica"></div>
-
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;">
-                <h4>🛒 Lista de Compras a Granel:</h4>
+                <h4>🛒 Lista de Compras:</h4>
                 <ul id="lista-compras-evento" style="padding-left: 20px; line-height: 1.8;"></ul>
-                
-                <button class="btn-accion" style="background-color: #e74c3c; width: 100%; margin-top: 20px;" onclick="exportarPDF()">📄 Descargar Reporte en PDF</button>
+                <button class="btn-accion" style="background-color: #e74c3c; width: 100%; margin-top: 20px;" onclick="exportarPDF()">📄 Descargar PDF</button>
+            </div>
+        </div>
+
+        <!-- AGENDA -->
+        <div id="sec-agenda" class="seccion">
+            <h2>Agenda de Eventos y Clientes</h2>
+            <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                <div class="card-formulario" style="flex: 1; min-width: 300px;">
+                    <h3>📝 Agendar Nuevo Evento</h3>
+                    <div class="formulario-inline" style="flex-direction: column; align-items: stretch;">
+                        <input type="text" id="agenda-cliente" placeholder="Nombre del Cliente / Empresa">
+                        <input type="date" id="agenda-fecha">
+                        <input type="text" id="agenda-direccion" placeholder="Dirección del Evento (Opcional)">
+                        <input type="number" id="agenda-cotizacion" placeholder="Cotización Total Ej: 50000 (Opcional)">
+                        <textarea id="agenda-detalles" placeholder="Detalles extra (Horarios, temáticas, etc)" rows="3"></textarea>
+                        <button class="btn-accion" style="margin-top: 10px; background-color: #9b59b6;" onclick="guardarEventoAgenda()">Guardar en Agenda</button>
+                    </div>
+                </div>
+                <div style="flex: 2; min-width: 400px;">
+                    <ul id="lista-agenda" class="grid-productos" style="grid-template-columns: 1fr;"></ul>
+                </div>
             </div>
         </div>
 
     </div>
 
     <script>
+        // Configuración global de SweetAlert para que use los estilos de nuestra app
+        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+
         if (!localStorage.getItem('bar_token') && window.location.pathname.endsWith('index.html')) window.location.href = 'login.html';
         function cerrarSesion() { localStorage.removeItem('bar_token'); window.location.href = 'login.html'; }
-        function cambiarSeccion(idSeccion, boton) {
-            document.querySelectorAll('.seccion').forEach(sec => sec.classList.remove('activa'));
-            document.getElementById(idSeccion).classList.add('activa');
-            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('activo'));
-            boton.classList.add('activo');
-        }
+        function cambiarSeccion(id, btn) { document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa')); document.getElementById(id).classList.add('activa'); document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('activo')); btn.classList.add('activo'); }
 
         let mezclaActual = []; let tragosEventoActual = []; let productoEnEdicion = null; 
 
-        // --- INVENTARIO ---
+        // --- CATEGORIAS DINÁMICAS ---
+        async function cargarSelectCategorias() {
+            try {
+                const res = await fetch('/api/categorias');
+                const categorias = await res.json();
+                const select = document.getElementById('nuevo-tipo');
+                select.innerHTML = '<option value="">Seleccione o cree una...</option>';
+                categorias.forEach(c => select.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`);
+            } catch (e) { console.error(e); }
+        }
+
+        async function crearCategoria() {
+            const { value: nombre } = await Swal.fire({
+                title: 'Nueva Categoría',
+                input: 'text',
+                inputLabel: 'Nombre de la categoría (Ej: Cristalería, Destilados)',
+                inputPlaceholder: 'Escribí acá...',
+                showCancelButton: true,
+                confirmButtonColor: '#2ecc71',
+                cancelButtonColor: '#e74c3c',
+                confirmButtonText: 'Crear',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (!nombre || nombre.trim() === '') return;
+            try {
+                const res = await fetch('/api/categorias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre }) });
+                if (res.ok) { 
+                    Toast.fire({ icon: 'success', title: 'Categoría agregada' });
+                    cargarSelectCategorias(); 
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // --- INVENTARIO MASIVO DESDE EXCEL ---
+        function importarExcel() {
+            const fileInput = document.getElementById('archivo-excel');
+            if (!fileInput.files.length) return Swal.fire('Atención', 'Seleccioná un archivo Excel primero.', 'warning');
+            
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(sheet);
+                
+                const productos = jsonData.map(row => ({
+                    nombre: row.Nombre || row.nombre,
+                    tipo: row.Categoria || row.categoria || "Otros",
+                    cantidad: parseFloat(row.Cantidad || row.cantidad || 1),
+                    unidad_medida: row.Unidad || row.unidad || "Unidades",
+                    precio: parseFloat(row.Precio || row.precio || 0)
+                }));
+
+                try {
+                    Swal.fire({ title: 'Importando...', text: 'Procesando el Excel, por favor esperá.', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+                    const res = await fetch('/api/productos/bulk', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ productos }) });
+                    if (res.ok) {
+                        Swal.fire('¡Listo!', `Se importaron ${productos.length} productos con éxito.`, 'success');
+                        fileInput.value = '';
+                        cargarCategorias();
+                        cargarSelectCategorias(); 
+                    } else Swal.fire("Error", "Hubo un error al procesar el Excel en el servidor.", "error");
+                } catch (error) { console.error(error); }
+            };
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        // --- INVENTARIO NORMAL ---
         async function cargarCategorias() {
             try {
-                // CAMBIO A RUTA RELATIVA
-                const respuesta = await fetch('/api/productos');
-                const datos = await respuesta.json(); 
-                const lista = document.getElementById('lista-categorias'); const selectIngredientes = document.getElementById('select-ingredientes');
-                lista.innerHTML = ''; selectIngredientes.innerHTML = '<option value="">Seleccioná un ingrediente...</option>'; 
-                datos.forEach(producto => {
-                    lista.innerHTML += `
-                        <li>
-                            <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 5px;">
-                                <button class="btn-icon" onclick="prepararEdicion(${producto.id}, '${producto.nombre}', '${producto.tipo}', ${producto.precio})" title="Editar">✏️</button>
-                                <button class="btn-icon" onclick="borrarProducto(${producto.id}, '${producto.nombre}')" title="Eliminar">🗑️</button>
-                            </div>
-                            <strong style="font-size: 1.2em; margin-top: 15px;">${producto.nombre}</strong>
-                            <span style="color: #666; font-size: 0.9em;">📁 ${producto.tipo}</span>
-                            <span style="color: #2ecc71; font-weight: bold; font-size: 1.1em; margin-top: 5px;">💰 $${producto.precio}</span>
-                        </li>`;
-                    selectIngredientes.innerHTML += `<option value="${producto.id}">${producto.nombre}</option>`;
+                const res = await fetch('/api/productos');
+                const datos = await res.json(); 
+                const lista = document.getElementById('lista-categorias'); const selIng = document.getElementById('select-ingredientes');
+                lista.innerHTML = ''; selIng.innerHTML = '<option value="">Seleccioná un ingrediente...</option>'; 
+                datos.forEach(p => {
+                    lista.innerHTML += `<li><div style="position: absolute; top: 10px; right: 10px;"><button class="btn-icon" onclick="prepararEdicion(${p.id}, '${p.nombre}', '${p.tipo}', ${p.precio}, ${p.cantidad}, '${p.unidad_medida}')">✏️</button><button class="btn-icon" onclick="borrarProducto(${p.id}, '${p.nombre}')">🗑️</button></div><strong style="font-size: 1.2em; margin-top: 15px;">${p.nombre}</strong><span style="color: #666; font-size: 0.9em;">📁 ${p.tipo}</span><span style="color: #888; font-size: 0.9em;">📦 Formato: ${p.cantidad} ${p.unidad_medida}</span><span style="color: #2ecc71; font-weight: bold; font-size: 1.1em; margin-top: 5px;">💰 $${p.precio}</span></li>`;
+                    selIng.innerHTML += `<option value="${p.id}">${p.nombre} (en ${p.unidad_medida})</option>`;
                 });
-            } catch (error) { console.error("Error:", error); }
+            } catch (e) { console.error(e); }
         }
 
-        function prepararEdicion(id, nombre, tipo, precio) {
-            productoEnEdicion = id; document.getElementById('nuevo-nombre').value = nombre;
-            const selectTipo = document.getElementById('nuevo-tipo');
-            for(let i=0; i < selectTipo.options.length; i++) if(selectTipo.options[i].value === tipo) selectTipo.selectedIndex = i;
-            document.getElementById('nuevo-precio').value = precio;
-            document.getElementById('titulo-form-producto').innerText = "✏️ Editar Producto";
-            document.getElementById('btn-guardar-producto').innerText = "Actualizar";
-            document.getElementById('btn-cancelar-edicion').style.display = "block"; window.scrollTo(0, 0); 
+        function prepararEdicion(id, nom, tipo, pre, cant, uni) {
+            productoEnEdicion = id; document.getElementById('nuevo-nombre').value = nom; document.getElementById('nuevo-precio').value = pre; document.getElementById('nuevo-cantidad').value = cant;
+            let selTipo = document.getElementById('nuevo-tipo'); for(let i=0; i<selTipo.options.length; i++) if(selTipo.options[i].value === tipo) selTipo.selectedIndex = i;
+            let selUni = document.getElementById('nuevo-unidad'); for(let i=0; i<selUni.options.length; i++) if(selUni.options[i].value === uni) selUni.selectedIndex = i;
+            document.getElementById('titulo-form-producto').innerText = "✏️ Editar Producto"; document.getElementById('btn-guardar-producto').innerText = "Actualizar"; document.getElementById('btn-cancelar-edicion').style.display = "block"; window.scrollTo(0, 0); 
         }
 
-        function cancelarEdicion() {
-            productoEnEdicion = null; document.getElementById('nuevo-nombre').value = ''; document.getElementById('nuevo-precio').value = '';
-            document.getElementById('titulo-form-producto').innerText = "➕ Ingresar Nuevo Producto";
-            document.getElementById('btn-guardar-producto').innerText = "Guardar";
-            document.getElementById('btn-cancelar-edicion').style.display = "none";
-        }
+        function cancelarEdicion() { productoEnEdicion = null; document.getElementById('nuevo-nombre').value = ''; document.getElementById('nuevo-precio').value = ''; document.getElementById('nuevo-cantidad').value = ''; document.getElementById('titulo-form-producto').innerText = "➕ Ingresar Nuevo Producto"; document.getElementById('btn-guardar-producto').innerText = "Guardar"; document.getElementById('btn-cancelar-edicion').style.display = "none"; }
 
         async function guardarProducto() {
-            const nombre = document.getElementById('nuevo-nombre').value; const tipo = document.getElementById('nuevo-tipo').value; const precio = parseFloat(document.getElementById('nuevo-precio').value);
-            if (!nombre || !precio) return alert("Completá nombre y valor.");
+            const nom = document.getElementById('nuevo-nombre').value; const tipo = document.getElementById('nuevo-tipo').value; const pre = parseFloat(document.getElementById('nuevo-precio').value); const cant = parseFloat(document.getElementById('nuevo-cantidad').value); const uni = document.getElementById('nuevo-unidad').value;
+            if (!nom || !pre || !cant || !tipo) return Swal.fire('Atención', 'Completá todos los campos para guardar el producto.', 'warning');
             try {
-                // CAMBIO A RUTA RELATIVA
-                const url = productoEnEdicion ? `/api/productos/${productoEnEdicion}` : '/api/productos';
-                const metodo = productoEnEdicion ? 'PUT' : 'POST';
-                const res = await fetch(url, { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, tipo, precio }) });
-                if (res.ok) { cancelarEdicion(); cargarCategorias(); }
-            } catch (error) { console.error("Error:", error); }
+                const res = await fetch(productoEnEdicion ? `/api/productos/${productoEnEdicion}` : '/api/productos', { method: productoEnEdicion ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nom, tipo, precio: pre, cantidad: cant, unidad_medida: uni }) });
+                if (res.ok) { 
+                    cancelarEdicion(); cargarCategorias(); cargarSelectCategorias(); 
+                    Toast.fire({ icon: 'success', title: productoEnEdicion ? 'Producto actualizado' : 'Producto guardado' });
+                }
+            } catch (e) { console.error(e); }
         }
 
         async function borrarProducto(id, nombre) {
-            if (!confirm(`¿Estás seguro de que querés borrar "${nombre}"?`)) return;
-            try {
-                // CAMBIO A RUTA RELATIVA
-                const res = await fetch(`/api/productos/${id}`, { method: 'DELETE' });
-                if (res.ok) cargarCategorias(); else alert("No se pudo eliminar: " + (await res.json()).error);
-            } catch (error) { console.error("Error:", error); }
+            const result = await Swal.fire({ title: `¿Borrar "${nombre}"?`, text: "No vas a poder revertir esto.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
+            if (!result.isConfirmed) return;
+            try { 
+                const res = await fetch(`/api/productos/${id}`, { method: 'DELETE' }); 
+                if (res.ok) { cargarCategorias(); Toast.fire({ icon: 'success', title: 'Producto eliminado' }); } 
+                else Swal.fire('Error', (await res.json()).error, 'error'); 
+            } catch (e) { console.error(e); }
         }
 
-        // --- RECETAS ---
-        function agregarALaMezcla() {
-            const select = document.getElementById('select-ingredientes');
-            if (!select.value || !document.getElementById('cantidad-ingrediente').value) return;
-            mezclaActual.push({ ingrediente_id: select.value, nombre: select.options[select.selectedIndex].text, cantidad: document.getElementById('cantidad-ingrediente').value });
-            document.getElementById('cantidad-ingrediente').value = ''; select.value = ''; actualizarVistaMezcla();
-        }
-        function actualizarVistaMezcla() {
-            const ul = document.getElementById('lista-mezcla'); ul.innerHTML = ''; 
-            mezclaActual.forEach((item, index) => { ul.innerHTML += `<li>${item.cantidad} de ${item.nombre} <button class="btn-danger-small" onclick="quitarDeMezcla(${index})">X</button></li>`; });
-        }
-        function quitarDeMezcla(index) { mezclaActual.splice(index, 1); actualizarVistaMezcla(); }
+        // --- RESTO DEL SISTEMA (Recetas, Cotizador, Agenda) ---
+        function agregarALaMezcla() { const s = document.getElementById('select-ingredientes'); const c = document.getElementById('cantidad-ingrediente').value; if (!s.value || !c) return; mezclaActual.push({ ingrediente_id: s.value, nombre: s.options[s.selectedIndex].text, cantidad: c }); document.getElementById('cantidad-ingrediente').value = ''; s.value = ''; actMezcla(); }
+        function actMezcla() { document.getElementById('lista-mezcla').innerHTML = mezclaActual.map((i, idx) => `<li>${i.cantidad} de ${i.nombre} <button class="btn-danger-small" onclick="mezclaActual.splice(${idx}, 1); actMezcla();">X</button></li>`).join(''); }
         
         async function guardarReceta() {
-            const nombreTrago = document.getElementById('nombre-trago').value;
-            if (!nombreTrago || mezclaActual.length === 0) return alert("Faltan datos.");
-            try {
-                // CAMBIO A RUTA RELATIVA
-                const res = await fetch('/api/recetas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nombreTrago, ingredientes: mezclaActual }) });
-                if (res.ok) { alert("¡Receta guardada!"); document.getElementById('nombre-trago').value = ''; mezclaActual = []; actualizarVistaMezcla(); cargarTragosParaEvento(); cargarRecetasGuardadas(); }
-            } catch (error) { console.error("Error:", error); }
+            const n = document.getElementById('nombre-trago').value; if (!n || !mezclaActual.length) return Swal.fire('Atención', 'Ponéle un nombre al trago y agregá al menos un ingrediente.', 'warning');
+            if ((await fetch('/api/recetas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: n, ingredientes: mezclaActual }) })).ok) { 
+                Swal.fire('¡Excelente!', 'Receta guardada con éxito.', 'success'); 
+                document.getElementById('nombre-trago').value = ''; mezclaActual = []; actMezcla(); carTra(); carRec(); 
+            }
         }
 
-        async function cargarRecetasGuardadas() {
-            try {
-                // CAMBIO A RUTA RELATIVA
-                const res = await fetch('/api/recetas-detalle');
-                const recetas = await res.json();
-                const lista = document.getElementById('lista-recetas-guardadas');
-                lista.innerHTML = '';
-                
-                recetas.forEach(receta => {
-                    let ingredientesHTML = receta.ingredientes.map(ing => `<li>• ${ing.cantidad} ${ing.unidad_medida} de ${ing.nombre}</li>`).join('');
-                    lista.innerHTML += `
-                        <li style="border-left: 5px solid #f39c12;">
-                            <strong style="font-size: 1.3em; color: #2c3e50;">🍸 ${receta.nombre}</strong>
-                            <span style="color: #e74c3c; font-weight: bold; font-size: 1.3em; margin: 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px;">Costo total: $${receta.costoTotal}</span>
-                            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9em; color: #555;">
-                                ${ingredientesHTML}
-                            </ul>
-                        </li>`;
-                });
-            } catch (error) { console.error("Error:", error); }
+        async function carRec() {
+            const res = await fetch('/api/recetas-detalle');
+            const recetas = await res.json();
+            document.getElementById('lista-recetas-guardadas').innerHTML = recetas.map(r => `<li style="border-left: 5px solid #f39c12;"><button class="btn-icon" style="position: absolute; top: 15px; right: 15px;" onclick="borrarRecetaConfirm(${r.id}, '${r.nombre}')">🗑️</button><strong style="font-size: 1.3em;">🍸 ${r.nombre}</strong><span style="color: #e74c3c; font-weight: bold; font-size: 1.3em; margin: 10px 0;">Costo: $${r.costoTotal}</span><ul style="list-style: none; padding: 0; font-size: 0.9em; color: #555;">${r.ingredientes.map(i => `<li>• ${i.cantidad} ${i.unidad_medida} de ${i.nombre}</li>`).join('')}</ul></li>`).join('');
         }
 
-        // --- EVENTOS ---
-        async function cargarTragosParaEvento() {
-            try {
-                // CAMBIO A RUTA RELATIVA
-                const res = await fetch('/api/tragos');
-                const tragos = await res.json();
-                const select = document.getElementById('select-tragos-evento'); select.innerHTML = '<option value="">Seleccioná un trago...</option>';
-                tragos.forEach(trago => { select.innerHTML += `<option value="${trago.id}">${trago.nombre}</option>`; });
-            } catch (error) { console.error("Error:", error); }
+        async function borrarRecetaConfirm(id, nombre) {
+            const result = await Swal.fire({ title: `¿Borrar receta de ${nombre}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
+            if (result.isConfirmed) { await fetch(`/api/recetas/${id}`, {method: 'DELETE'}); carRec(); carTra(); Toast.fire({ icon: 'success', title: 'Receta eliminada' }); }
         }
 
-        function agregarTragoAlEvento() {
-            const select = document.getElementById('select-tragos-evento'); const cant = document.getElementById('cantidad-servicios').value;
-            if (!select.value || !cant) return;
-            tragosEventoActual.push({ trago_id: select.value, nombre: select.options[select.selectedIndex].text, cantidad: parseInt(cant) });
-            document.getElementById('cantidad-servicios').value = ''; select.value = ''; actualizarVistaEvento();
+        async function carTra() {
+            const s = document.getElementById('select-tragos-evento'); s.innerHTML = '<option value="">Seleccioná...</option>';
+            (await (await fetch('/api/tragos')).json()).forEach(t => s.innerHTML += `<option value="${t.id}">${t.nombre}</option>`);
         }
-        function actualizarVistaEvento() {
-            const ul = document.getElementById('lista-tragos-evento'); ul.innerHTML = ''; 
-            tragosEventoActual.forEach((item, index) => { ul.innerHTML += `<li>${item.cantidad}x ${item.nombre} <button class="btn-danger-small" onclick="quitarTragoEvento(${index})">X</button></li>`; });
-        }
-        function quitarTragoEvento(index) { tragosEventoActual.splice(index, 1); actualizarVistaEvento(); }
+
+        function agregarTragoAlEvento() { const s = document.getElementById('select-tragos-evento'); const c = document.getElementById('cantidad-servicios').value; if (!s.value || !c) return; tragosEventoActual.push({ trago_id: s.value, nombre: s.options[s.selectedIndex].text, cantidad: parseInt(c) }); document.getElementById('cantidad-servicios').value = ''; s.value = ''; actEv(); }
+        function actEv() { document.getElementById('lista-tragos-evento').innerHTML = tragosEventoActual.map((i, idx) => `<li>${i.cantidad}x ${i.nombre} <button class="btn-danger-small" onclick="tragosEventoActual.splice(${idx}, 1); actEv();">X</button></li>`).join(''); }
 
         async function calcularEvento() {
-            if (tragosEventoActual.length === 0) return alert("Agregá tragos al menú.");
-            try {
-                // CAMBIO A RUTA RELATIVA
-                const res = await fetch('/api/calcular-evento', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tragos_evento: tragosEventoActual }) });
-                const data = await res.json();
+            if (!tragosEventoActual.length) return Swal.fire('Atención', 'Agregá al menos un trago al menú para cotizar.', 'info');
+            const res = await fetch('/api/calcular-evento', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tragos_evento: tragosEventoActual }) });
+            if (res.ok) {
+                const data = await res.json(); document.getElementById('resultado-evento').style.display = 'block';
+                document.getElementById('detalle-logistica').innerHTML = `<div class="caja-costo"><p style="margin: 0; color: #555;">Costo Neto Insumos</p><h2>$ ${data.costoTotalEvento}</h2></div><p style="font-size: 1.1em;">🍸 Tragos totales a despachar: <strong>${data.totalTragos}</strong></p><p style="margin: 5px 0;">👉 <strong>${data.logistica.bartenders}</strong> Bartenders (1 c/50 tragos)</p><p style="margin: 5px 0;">👉 <strong>${data.logistica.runners}</strong> Runners</p>`;
+                document.getElementById('lista-compras-evento').innerHTML = data.listaCompras.map(i => `<li><strong>${i.cantidadTotal} ${i.unidad}</strong> de ${i.ingrediente}</li>`).join('');
+                document.getElementById('resultado-evento').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        function exportarPDF() { const e = document.getElementById('resultado-evento'); const b = e.querySelector('button'); b.style.display = 'none'; html2pdf().set({ margin: 15, filename: 'Cotizacion.pdf' }).from(e).save().then(() => b.style.display = 'block'); }
 
-                if (res.ok) {
-                    document.getElementById('resultado-evento').style.display = 'block';
-                    
-                    document.getElementById('detalle-logistica').innerHTML = `
-                        <div class="caja-costo">
-                            <p style="margin: 0; font-size: 1.2em; color: #555;">Costo de Insumos (Neto)</p>
-                            <h2>$ ${data.costoTotalEvento}</h2>
-                        </div>
-                        
-                        <p style="font-size: 1.1em;">🍸 Total de servicios a despachar: <strong>${data.totalTragos} tragos</strong></p>
-                        
-                        <h4 style="border-bottom: 2px solid #ccc; padding-bottom: 5px; color: #2c3e50; margin-top: 20px;">👥 Equipo de Trabajo Sugerido</h4>
-                        <p style="margin: 5px 0;">👉 <strong>${data.logistica.bartenders}</strong> Bartenders (1 cada 50 tragos)</p>
-                        <p style="margin: 5px 0;">👉 <strong>${data.logistica.runners}</strong> Runners / Repositores de hielo e insumos</p>
-
-                        <h4 style="border-bottom: 2px solid #ccc; padding-bottom: 5px; color: #2c3e50; margin-top: 20px;">🏗️ Estructura Física</h4>
-                        <p style="margin: 5px 0;">👉 <strong>${data.logistica.barras}</strong> Estaciones de Barra (1 cada 100 tragos)</p>
-                    `;
-
-                    const ul = document.getElementById('lista-compras-evento'); ul.innerHTML = '';
-                    data.listaCompras.forEach(item => ul.innerHTML += `<li><strong>${item.cantidadTotal} ${item.unidad}</strong> de ${item.ingrediente}</li>`);
-                }
-            } catch (error) { console.error("Error:", error); }
+        async function carAge() {
+            const evs = await (await fetch('/api/agenda')).json(); const l = document.getElementById('lista-agenda');
+            if (!evs.length) return l.innerHTML = '<p style="color: #7f8c8d; padding: 20px;">No hay eventos agendados aún.</p>';
+            l.innerHTML = evs.map(e => `<li style="border-left: 5px solid #9b59b6; flex-direction: row; justify-content: space-between; align-items: center;"><div><strong style="font-size: 1.3em; color: #2c3e50;">👤 ${e.cliente}</strong><br><span style="color: #e67e22; font-weight: bold; font-size: 1.1em;">📅 ${new Date(e.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</span><br><span style="color: #666; font-size: 0.9em;">📍 ${e.direccion || 'S/D'}</span><br><span style="color: #27ae60; font-weight: bold; font-size: 1.1em;">💰 Presupuesto: $${e.cotizacion_total}</span>${e.detalles ? `<p style="margin: 5px 0 0 0; font-size: 0.9em; color: #555;"><em>"${e.detalles}"</em></p>` : ''}</div><button class="btn-icon" style="font-size: 1.5em;" onclick="borrarAgendaConfirm(${e.id}, '${e.cliente}')">🗑️</button></li>`).join('');
         }
 
-        function exportarPDF() {
-            const elemento = document.getElementById('resultado-evento'); const botonPDF = elemento.querySelector('button'); botonPDF.style.display = 'none'; 
-            html2pdf().set({ margin: 15, filename: 'Cotizacion_BarManager.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(elemento).save().then(() => { botonPDF.style.display = 'block'; }); 
+        async function borrarAgendaConfirm(id, cliente) {
+            const result = await Swal.fire({ title: `¿Borrar evento de ${cliente}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
+            if (result.isConfirmed) { await fetch(`/api/agenda/${id}`,{method:'DELETE'}); carAge(); Toast.fire({ icon: 'success', title: 'Evento eliminado' }); }
         }
 
-        window.onload = () => { cargarCategorias(); cargarTragosParaEvento(); cargarRecetasGuardadas(); };
+        async function guardarEventoAgenda() {
+            const cliente = document.getElementById('agenda-cliente').value, fecha = document.getElementById('agenda-fecha').value, direccion = document.getElementById('agenda-direccion').value, cotizacion_total = document.getElementById('agenda-cotizacion').value, detalles = document.getElementById('agenda-detalles').value;
+            if (!cliente || !fecha) return Swal.fire('Atención', 'El cliente y la fecha son obligatorios.', 'warning');
+            if ((await fetch('/api/agenda', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente, fecha, direccion, cotizacion_total, detalles }) })).ok) { 
+                Swal.fire('¡Agendado!', 'El evento se guardó correctamente.', 'success'); 
+                ['cliente','fecha','direccion','cotizacion','detalles'].forEach(id => document.getElementById(`agenda-${id}`).value = ''); carAge(); 
+            }
+        }
+
+        window.onload = () => { cargarSelectCategorias(); cargarCategorias(); carTra(); carRec(); carAge(); };
     </script>
 </body>
 </html>

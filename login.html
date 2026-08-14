@@ -3,51 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bar Manager - Login</title>
+    <title>Bar Manager Pro - Acceso</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        button:hover { background-color: #0056b3; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #2c3e50; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: #333; }
+        .login-container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 350px; text-align: center; position: relative; overflow: hidden;}
+        .form-section { transition: transform 0.3s ease-in-out; }
+        h2 { color: #2c3e50; margin-top: 0; font-size: 1.8em;}
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 1em;}
+        button { width: 100%; padding: 12px; background-color: #3498db; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: background 0.3s; }
+        button:hover { background-color: #2980b9; }
+        .btn-secondary { background-color: transparent; color: #7f8c8d; margin-top: 15px; font-size: 0.9em; padding: 5px; }
+        .btn-secondary:hover { background-color: transparent; color: #3498db; text-decoration: underline; }
+        
+        #seccion-registro { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="login-box">
-        <h2>🍹 Acceso al Bar</h2>
-        <input type="email" id="email" placeholder="Correo electrónico" value="admin@bar.com">
-        <input type="password" id="password" placeholder="Contraseña" value="123456">
-        <button onclick="iniciarSesion()">Ingresar</button>
-        <p id="mensaje-error" style="color: red; display: none; font-size: 0.9em;"></p>
+    <div class="login-container">
+        
+        <!-- FORMULARIO DE LOGIN -->
+        <div id="seccion-login" class="form-section">
+            <h2>🍹 Acceso al Bar</h2>
+            <input type="email" id="login-email" placeholder="Correo electrónico" value="admin@bar.com">
+            <input type="password" id="login-password" placeholder="Contraseña" value="123456">
+            <button onclick="iniciarSesion()">Ingresar al Sistema</button>
+            <button class="btn-secondary" onclick="toggleFormularios()">¿No tenés cuenta? Registrate acá</button>
+        </div>
+
+        <!-- FORMULARIO DE REGISTRO -->
+        <div id="seccion-registro" class="form-section">
+            <h2>📝 Nueva Cuenta</h2>
+            <input type="text" id="reg-nombre" placeholder="Tu Nombre">
+            <input type="email" id="reg-email" placeholder="Correo electrónico">
+            <input type="password" id="reg-password" placeholder="Crear Contraseña">
+            <button onclick="registrarUsuario()" style="background-color: #2ecc71;">Crear Cuenta</button>
+            <button class="btn-secondary" onclick="toggleFormularios()">Volver a Iniciar Sesión</button>
+        </div>
+
     </div>
 
     <script>
+        // Animación simple para cambiar entre login y registro
+        function toggleFormularios() {
+            const login = document.getElementById('seccion-login');
+            const registro = document.getElementById('seccion-registro');
+            if (login.style.display === 'none') {
+                login.style.display = 'block'; registro.style.display = 'none';
+            } else {
+                login.style.display = 'none'; registro.style.display = 'block';
+            }
+        }
+
+        // Función de Login
         async function iniciarSesion() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const errorP = document.getElementById('mensaje-error');
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            if(!email || !password) return Swal.fire('Atención', 'Completá correo y contraseña', 'warning');
 
             try {
-                // ACA ESTÁ EL CAMBIO A RUTA RELATIVA
+                Swal.fire({ title: 'Conectando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
                 const respuesta = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
-
                 const datos = await respuesta.json();
 
                 if (respuesta.ok) {
                     localStorage.setItem('bar_token', datos.token);
                     window.location.href = 'index.html';
                 } else {
-                    errorP.textContent = datos.error;
-                    errorP.style.display = 'block';
+                    Swal.fire('Error', datos.error, 'error');
                 }
-            } catch (error) {
-                console.error("Error al conectar:", error);
-            }
+            } catch (error) { Swal.fire('Error', 'Fallo de conexión con el servidor', 'error'); }
+        }
+
+        // Función de Registro
+        async function registrarUsuario() {
+            const nombre = document.getElementById('reg-nombre').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+
+            if(!nombre || !email || !password) return Swal.fire('Atención', 'Todos los campos son obligatorios', 'warning');
+            if(password.length < 6) return Swal.fire('Seguridad', 'La contraseña debe tener al menos 6 caracteres', 'info');
+
+            try {
+                Swal.fire({ title: 'Creando cuenta...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+                const respuesta = await fetch('/api/registro', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, email, password })
+                });
+                const datos = await respuesta.json();
+
+                if (respuesta.ok) {
+                    Swal.fire('¡Éxito!', 'Tu cuenta fue creada. Ahora podés iniciar sesión.', 'success');
+                    toggleFormularios(); // Volvemos al login
+                    document.getElementById('login-email').value = email; // Autocompletamos el email
+                    document.getElementById('login-password').value = '';
+                } else {
+                    Swal.fire('Error', datos.error, 'error');
+                }
+            } catch (error) { Swal.fire('Error', 'Fallo de conexión con el servidor', 'error'); }
         }
     </script>
 </body>
