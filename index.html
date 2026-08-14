@@ -6,7 +6,6 @@
     <title>Bar Manager Pro - Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- NUEVO: SweetAlert2 para alertas hermosas -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: #333; margin: 0; display: flex; flex-direction: column; height: 100vh; }
@@ -165,7 +164,6 @@
     </div>
 
     <script>
-        // Configuración global de SweetAlert para que use los estilos de nuestra app
         const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
 
         if (!localStorage.getItem('bar_token') && window.location.pathname.endsWith('index.html')) window.location.href = 'login.html';
@@ -174,10 +172,18 @@
 
         let mezclaActual = []; let tragosEventoActual = []; let productoEnEdicion = null; 
 
+        // Función auxiliar para inyectar el Token en cada petición segura
+        function getHeaders(incluirContentType = true) {
+            const token = localStorage.getItem('bar_token');
+            const headers = { 'Authorization': `Bearer ${token}` };
+            if (incluirContentType) { headers['Content-Type'] = 'application/json'; }
+            return headers;
+        }
+
         // --- CATEGORIAS DINÁMICAS ---
         async function cargarSelectCategorias() {
             try {
-                const res = await fetch('/api/categorias');
+                const res = await fetch('/api/categorias', { headers: getHeaders(false) });
                 const categorias = await res.json();
                 const select = document.getElementById('nuevo-tipo');
                 select.innerHTML = '<option value="">Seleccione o cree una...</option>';
@@ -200,7 +206,7 @@
 
             if (!nombre || nombre.trim() === '') return;
             try {
-                const res = await fetch('/api/categorias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre }) });
+                const res = await fetch('/api/categorias', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre }) });
                 if (res.ok) { 
                     Toast.fire({ icon: 'success', title: 'Categoría agregada' });
                     cargarSelectCategorias(); 
@@ -230,7 +236,7 @@
 
                 try {
                     Swal.fire({ title: 'Importando...', text: 'Procesando el Excel, por favor esperá.', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
-                    const res = await fetch('/api/productos/bulk', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ productos }) });
+                    const res = await fetch('/api/productos/bulk', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ productos }) });
                     if (res.ok) {
                         Swal.fire('¡Listo!', `Se importaron ${productos.length} productos con éxito.`, 'success');
                         fileInput.value = '';
@@ -245,7 +251,7 @@
         // --- INVENTARIO NORMAL ---
         async function cargarCategorias() {
             try {
-                const res = await fetch('/api/productos');
+                const res = await fetch('/api/productos', { headers: getHeaders(false) });
                 const datos = await res.json(); 
                 const lista = document.getElementById('lista-categorias'); const selIng = document.getElementById('select-ingredientes');
                 lista.innerHTML = ''; selIng.innerHTML = '<option value="">Seleccioná un ingrediente...</option>'; 
@@ -269,7 +275,7 @@
             const nom = document.getElementById('nuevo-nombre').value; const tipo = document.getElementById('nuevo-tipo').value; const pre = parseFloat(document.getElementById('nuevo-precio').value); const cant = parseFloat(document.getElementById('nuevo-cantidad').value); const uni = document.getElementById('nuevo-unidad').value;
             if (!nom || !pre || !cant || !tipo) return Swal.fire('Atención', 'Completá todos los campos para guardar el producto.', 'warning');
             try {
-                const res = await fetch(productoEnEdicion ? `/api/productos/${productoEnEdicion}` : '/api/productos', { method: productoEnEdicion ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nom, tipo, precio: pre, cantidad: cant, unidad_medida: uni }) });
+                const res = await fetch(productoEnEdicion ? `/api/productos/${productoEnEdicion}` : '/api/productos', { method: productoEnEdicion ? 'PUT' : 'POST', headers: getHeaders(), body: JSON.stringify({ nombre: nom, tipo, precio: pre, cantidad: cant, unidad_medida: uni }) });
                 if (res.ok) { 
                     cancelarEdicion(); cargarCategorias(); cargarSelectCategorias(); 
                     Toast.fire({ icon: 'success', title: productoEnEdicion ? 'Producto actualizado' : 'Producto guardado' });
@@ -281,7 +287,7 @@
             const result = await Swal.fire({ title: `¿Borrar "${nombre}"?`, text: "No vas a poder revertir esto.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
             if (!result.isConfirmed) return;
             try { 
-                const res = await fetch(`/api/productos/${id}`, { method: 'DELETE' }); 
+                const res = await fetch(`/api/productos/${id}`, { method: 'DELETE', headers: getHeaders(false) }); 
                 if (res.ok) { cargarCategorias(); Toast.fire({ icon: 'success', title: 'Producto eliminado' }); } 
                 else Swal.fire('Error', (await res.json()).error, 'error'); 
             } catch (e) { console.error(e); }
@@ -293,26 +299,26 @@
         
         async function guardarReceta() {
             const n = document.getElementById('nombre-trago').value; if (!n || !mezclaActual.length) return Swal.fire('Atención', 'Ponéle un nombre al trago y agregá al menos un ingrediente.', 'warning');
-            if ((await fetch('/api/recetas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: n, ingredientes: mezclaActual }) })).ok) { 
+            if ((await fetch('/api/recetas', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre: n, ingredientes: mezclaActual }) })).ok) { 
                 Swal.fire('¡Excelente!', 'Receta guardada con éxito.', 'success'); 
                 document.getElementById('nombre-trago').value = ''; mezclaActual = []; actMezcla(); carTra(); carRec(); 
             }
         }
 
         async function carRec() {
-            const res = await fetch('/api/recetas-detalle');
+            const res = await fetch('/api/recetas-detalle', { headers: getHeaders(false) });
             const recetas = await res.json();
             document.getElementById('lista-recetas-guardadas').innerHTML = recetas.map(r => `<li style="border-left: 5px solid #f39c12;"><button class="btn-icon" style="position: absolute; top: 15px; right: 15px;" onclick="borrarRecetaConfirm(${r.id}, '${r.nombre}')">🗑️</button><strong style="font-size: 1.3em;">🍸 ${r.nombre}</strong><span style="color: #e74c3c; font-weight: bold; font-size: 1.3em; margin: 10px 0;">Costo: $${r.costoTotal}</span><ul style="list-style: none; padding: 0; font-size: 0.9em; color: #555;">${r.ingredientes.map(i => `<li>• ${i.cantidad} ${i.unidad_medida} de ${i.nombre}</li>`).join('')}</ul></li>`).join('');
         }
 
         async function borrarRecetaConfirm(id, nombre) {
             const result = await Swal.fire({ title: `¿Borrar receta de ${nombre}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
-            if (result.isConfirmed) { await fetch(`/api/recetas/${id}`, {method: 'DELETE'}); carRec(); carTra(); Toast.fire({ icon: 'success', title: 'Receta eliminada' }); }
+            if (result.isConfirmed) { await fetch(`/api/recetas/${id}`, { method: 'DELETE', headers: getHeaders(false) }); carRec(); carTra(); Toast.fire({ icon: 'success', title: 'Receta eliminada' }); }
         }
 
         async function carTra() {
             const s = document.getElementById('select-tragos-evento'); s.innerHTML = '<option value="">Seleccioná...</option>';
-            (await (await fetch('/api/tragos')).json()).forEach(t => s.innerHTML += `<option value="${t.id}">${t.nombre}</option>`);
+            (await (await fetch('/api/tragos', { headers: getHeaders(false) })).json()).forEach(t => s.innerHTML += `<option value="${t.id}">${t.nombre}</option>`);
         }
 
         function agregarTragoAlEvento() { const s = document.getElementById('select-tragos-evento'); const c = document.getElementById('cantidad-servicios').value; if (!s.value || !c) return; tragosEventoActual.push({ trago_id: s.value, nombre: s.options[s.selectedIndex].text, cantidad: parseInt(c) }); document.getElementById('cantidad-servicios').value = ''; s.value = ''; actEv(); }
@@ -320,7 +326,7 @@
 
         async function calcularEvento() {
             if (!tragosEventoActual.length) return Swal.fire('Atención', 'Agregá al menos un trago al menú para cotizar.', 'info');
-            const res = await fetch('/api/calcular-evento', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tragos_evento: tragosEventoActual }) });
+            const res = await fetch('/api/calcular-evento', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ tragos_evento: tragosEventoActual }) });
             if (res.ok) {
                 const data = await res.json(); document.getElementById('resultado-evento').style.display = 'block';
                 document.getElementById('detalle-logistica').innerHTML = `<div class="caja-costo"><p style="margin: 0; color: #555;">Costo Neto Insumos</p><h2>$ ${data.costoTotalEvento}</h2></div><p style="font-size: 1.1em;">🍸 Tragos totales a despachar: <strong>${data.totalTragos}</strong></p><p style="margin: 5px 0;">👉 <strong>${data.logistica.bartenders}</strong> Bartenders (1 c/50 tragos)</p><p style="margin: 5px 0;">👉 <strong>${data.logistica.runners}</strong> Runners</p>`;
@@ -331,20 +337,20 @@
         function exportarPDF() { const e = document.getElementById('resultado-evento'); const b = e.querySelector('button'); b.style.display = 'none'; html2pdf().set({ margin: 15, filename: 'Cotizacion.pdf' }).from(e).save().then(() => b.style.display = 'block'); }
 
         async function carAge() {
-            const evs = await (await fetch('/api/agenda')).json(); const l = document.getElementById('lista-agenda');
+            const evs = await (await fetch('/api/agenda', { headers: getHeaders(false) })).json(); const l = document.getElementById('lista-agenda');
             if (!evs.length) return l.innerHTML = '<p style="color: #7f8c8d; padding: 20px;">No hay eventos agendados aún.</p>';
             l.innerHTML = evs.map(e => `<li style="border-left: 5px solid #9b59b6; flex-direction: row; justify-content: space-between; align-items: center;"><div><strong style="font-size: 1.3em; color: #2c3e50;">👤 ${e.cliente}</strong><br><span style="color: #e67e22; font-weight: bold; font-size: 1.1em;">📅 ${new Date(e.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</span><br><span style="color: #666; font-size: 0.9em;">📍 ${e.direccion || 'S/D'}</span><br><span style="color: #27ae60; font-weight: bold; font-size: 1.1em;">💰 Presupuesto: $${e.cotizacion_total}</span>${e.detalles ? `<p style="margin: 5px 0 0 0; font-size: 0.9em; color: #555;"><em>"${e.detalles}"</em></p>` : ''}</div><button class="btn-icon" style="font-size: 1.5em;" onclick="borrarAgendaConfirm(${e.id}, '${e.cliente}')">🗑️</button></li>`).join('');
         }
 
         async function borrarAgendaConfirm(id, cliente) {
             const result = await Swal.fire({ title: `¿Borrar evento de ${cliente}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#95a5a6', confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
-            if (result.isConfirmed) { await fetch(`/api/agenda/${id}`,{method:'DELETE'}); carAge(); Toast.fire({ icon: 'success', title: 'Evento eliminado' }); }
+            if (result.isConfirmed) { await fetch(`/api/agenda/${id}`, { method: 'DELETE', headers: getHeaders(false) }); carAge(); Toast.fire({ icon: 'success', title: 'Evento eliminado' }); }
         }
 
         async function guardarEventoAgenda() {
             const cliente = document.getElementById('agenda-cliente').value, fecha = document.getElementById('agenda-fecha').value, direccion = document.getElementById('agenda-direccion').value, cotizacion_total = document.getElementById('agenda-cotizacion').value, detalles = document.getElementById('agenda-detalles').value;
             if (!cliente || !fecha) return Swal.fire('Atención', 'El cliente y la fecha son obligatorios.', 'warning');
-            if ((await fetch('/api/agenda', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente, fecha, direccion, cotizacion_total, detalles }) })).ok) { 
+            if ((await fetch('/api/agenda', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ cliente, fecha, direccion, cotizacion_total, detalles }) })).ok) { 
                 Swal.fire('¡Agendado!', 'El evento se guardó correctamente.', 'success'); 
                 ['cliente','fecha','direccion','cotizacion','detalles'].forEach(id => document.getElementById(`agenda-${id}`).value = ''); carAge(); 
             }
