@@ -21,6 +21,7 @@ console.error = (msg) => logStream.write(`${new Date().toISOString()} - ERROR: $
 app.use('/api', require('./routes/usuarios')); // Manejará /api/login y /api/register
 app.use('/api/productos', require('./routes/productos'));
 app.use('/api/agenda', require('./routes/agenda'));
+app.use('/api/categorias', require('./routes/categorias'));
 // (Acá podés seguir sumando rutas limpiamente a futuro, ej: app.use('/api/recetas', require('./routes/recetas')));
 
 // Inicio del servidor
