@@ -3,6 +3,16 @@ const router = express.Router();
 const ctrl = require('../controllers/productosController');
 const db = require('../db'); // ¡Faltaba importar la base de datos!
 
+const productosController = require('../controllers/productosController');
+// ... (tus otras rutas de inventario y recetas) ...
+
+// RUTA DE PLANTILLAS (ponerlas antes de los :id)
+router.get('/plantillas', productosController.getPlantillas);
+router.post('/plantillas', productosController.crearPlantilla);
+
+
+
+module.exports = router;
 // Inventario
 router.get('/', ctrl.getProductos); // Usamos '/' porque en index.js ya dice '/api/productos'
 router.post('/', ctrl.crearProducto);
@@ -27,5 +37,5 @@ router.get('/recetas-detalle', ctrl.getRecetasDetalle);
 router.post('/recetas', ctrl.crearReceta);
 router.delete('/recetas/:id', ctrl.eliminarReceta);
 router.post('/calcular-evento', ctrl.calcularEvento);
-
+router.post('/recuperar-password', productosController.recuperarPassword);
 module.exports = router;

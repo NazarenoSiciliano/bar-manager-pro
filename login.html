@@ -40,6 +40,9 @@
             <input type="password" id="reg-password" placeholder="Crear Contraseña">
             <button onclick="registrarUsuario()" style="background-color: #2ecc71;">Crear Cuenta</button>
             <button class="btn-secondary" onclick="toggleFormularios()">Volver a Iniciar Sesión</button>
+            <p style="text-align: center; margin-top: 15px;">
+    <a href="#" onclick="olvidePassword()" style="color: #3498db; text-decoration: none;">¿Olvidaste tu contraseña?</a>
+</p>
         </div>
 
     </div>
@@ -108,6 +111,51 @@
                 }
             } catch (error) { Swal.fire('Error', 'Fallo de conexión con el servidor', 'error'); }
         }
+        async function olvidePassword() {
+    const { value: formValues } = await Swal.fire({
+        title: 'Recuperar Contraseña',
+        html: `
+            <p style="font-size: 0.9em; color: #666;">Ingresá tu correo y tu nueva clave.</p>
+            <input id="swal-email" type="email" class="swal2-input" placeholder="Tu correo electrónico" style="width: 85%;">
+            <input id="swal-new-pass" type="password" class="swal2-input" placeholder="Nueva contraseña (mín. 6)" style="width: 85%;">
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Actualizar Contraseña',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const email = document.getElementById('swal-email').value;
+            const nuevaPassword = document.getElementById('swal-new-pass').value;
+            if (!email || !nuevaPassword) {
+                Swal.showValidationMessage('Completá ambos campos para continuar');
+                return false;
+            }
+            return { email, nuevaPassword };
+        }
+    });
+
+    if (formValues) {
+        try {
+            // Mandamos la petición al backend
+            const res = await fetch('/api/productos/recuperar-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formValues)
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                Swal.fire('¡Listo!', data.mensaje, 'success');
+            } else {
+                Swal.fire('Error', data.error, 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Hubo un problema de conexión.', 'error');
+        }
+    }
+}
     </script>
 </body>
 </html>

@@ -97,16 +97,30 @@ exports.getRecetasDetalle = async (req, res) => {
 
         res.json(tragos.map(trago => {
             const ings = ingredientes.filter(ing => ing.trago_id === trago.id);
-            return { ...trago, ingredientes: ings, costoTotal: ings.reduce((s, i) => s + parseFloat(i.costo_ingrediente || 0), 0).toFixed(2) };
+            const costoTotal = ings.reduce((s, i) => s + parseFloat(i.costo_ingrediente || 0), 0);
+            return { 
+                ...trago, 
+                ingredientes: ings, 
+                costoTotal: costoTotal.toFixed(2),
+                precio_venta: trago.precio_venta || 0,
+                ganancia: ((trago.precio_venta || 0) - costoTotal).toFixed(2)
+            };
         }));
     } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
 
 exports.crearReceta = async (req, res) => {
-    const { nombre, ingredientes } = req.body;
+    const { nombre, ingredientes, precio_venta } = req.body;
     try {
-        const trago_id = (await db.query('INSERT INTO Tragos (nombre, descripcion) VALUES (?, ?)', [nombre, '']))[0].insertId;
-        for (let item of ingredientes) await db.query('INSERT INTO Recetas (trago_id, ingrediente_id, cantidad) VALUES (?, ?, ?)', [trago_id, item.ingrediente_id, item.cantidad]);
+        // TRUCO: Si la columna precio_venta no existe en Aiven, la creamos al vuelo sin usar DBeaver
+        try { await db.query('ALTER TABLE Tragos ADD COLUMN precio_venta DECIMAL(10,2) DEFAULT 0'); } catch(err) { /* Si ya existe, ignoramos el error */ }
+
+        const [resultado] = await db.query('INSERT INTO Tragos (nombre, descripcion, precio_venta) VALUES (?, ?, ?)', [nombre, '', precio_venta || 0]);
+        const trago_id = resultado.insertId;
+        
+        for (let item of ingredientes) {
+            await db.query('INSERT INTO Recetas (trago_id, ingrediente_id, cantidad) VALUES (?, ?, ?)', [trago_id, item.ingrediente_id, item.cantidad]);
+        }
         res.status(201).json({ mensaje: 'Receta guardada' });
     } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
@@ -119,24 +133,59 @@ exports.eliminarReceta = async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
 
+// 📊 COTIZADOR LOGÍSTICO POR PERSONA
 exports.calcularEvento = async (req, res) => {
-    const { tragos_evento } = req.body;
-    try {
-        let listaComprasTemp = {}; let totalTragos = 0; let costoTotalEvento = 0;
-        for (let item of tragos_evento) {
-            totalTragos += item.cantidad;
-            const [ingredientes] = await db.query(`SELECT i.nombre AS ingrediente, r.cantidad AS cantidad_unitaria, i.unidad_medida, (i.costo / i.cantidad) AS costo_por_unidad FROM Recetas r JOIN Ingredientes i ON r.ingrediente_id = i.id WHERE r.trago_id = ?`, [item.trago_id]);
-            ingredientes.forEach(ing => {
-                const cantTotal = ing.cantidad_unitaria * item.cantidad;
-                costoTotalEvento += (ing.costo_por_unidad * cantTotal);
-                if (listaComprasTemp[ing.ingrediente]) listaComprasTemp[ing.ingrediente].cantidadTotal += cantTotal;
-                else listaComprasTemp[ing.ingrediente] = { ingrediente: ing.ingrediente, cantidadTotal: cantTotal, unidad: ing.unidad_medida };
-            });
-        }
-        res.json({ totalTragos, costoTotalEvento: costoTotalEvento.toFixed(2), listaCompras: Object.values(listaComprasTemp), logistica: { bartenders: Math.ceil(totalTragos / 50), runners: Math.ceil(Math.ceil(totalTragos / 50) / 2), barras: Math.ceil(totalTragos / 100) } });
-    } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
-};
+    const { tragos_evento, personas, consumo_por_persona } = req.body;
+    
+    if (!tragos_evento || !personas) return res.status(400).json({ error: 'Faltan datos' });
 
+    // Matemática del evento:
+    const totalTragos = personas * (consumo_por_persona || 4);
+    const tragosPorReceta = Math.ceil(totalTragos / tragos_evento.length); 
+
+    try {
+        let costoTotalEvento = 0;
+        let listaCompras = {};
+
+        for (let item of tragos_evento) {
+            // CORRECCIÓN: Tu tabla se llama Ingredientes y la columna de precio se llama costo
+            const [recetas] = await db.query(`
+                SELECT r.cantidad, i.nombre, i.unidad_medida, i.costo, i.cantidad as formato_cantidad 
+                FROM Recetas r 
+                JOIN Ingredientes i ON r.ingrediente_id = i.id 
+                WHERE r.trago_id = ?`, [item.trago_id]);
+
+            for (let ing of recetas) {
+                // Matemática de insumos
+                const cantidadNecesaria = ing.cantidad * tragosPorReceta;
+                const costoIngrediente = (ing.costo / ing.formato_cantidad) * cantidadNecesaria;
+                costoTotalEvento += costoIngrediente;
+
+                if (listaCompras[ing.nombre]) {
+                    listaCompras[ing.nombre].cantidadTotal += cantidadNecesaria;
+                } else {
+                    listaCompras[ing.nombre] = { ingrediente: ing.nombre, unidad: ing.unidad_medida, cantidadTotal: cantidadNecesaria };
+                }
+            }
+        }
+
+        // Matemática Logística basada en Personas:
+        const bartenders = Math.ceil(personas / 40); 
+        const runners = Math.ceil(personas / 100);   
+        const barras = Math.ceil(personas / 80);     
+
+        res.json({
+            costoTotalEvento: costoTotalEvento.toFixed(2),
+            totalTragos: totalTragos,
+            tragosPorReceta: tragosPorReceta,
+            logistica: { bartenders, runners, barras },
+            listaCompras: Object.values(listaCompras)
+        });
+    } catch (e) { 
+        console.error("💥 ERROR EN COTIZADOR:", e); 
+        res.status(500).json({ error: 'Error', detalle: e.message }); 
+    }
+};
 // 📅 AGENDA
 exports.getAgenda = async (req, res) => {
     try { res.json((await db.query('SELECT * FROM Agenda ORDER BY fecha ASC'))[0]); } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
@@ -164,14 +213,91 @@ exports.login = async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Error en el servidor', detalle: e.message }); }
 };
 
+// 🔐 AUTENTICACIÓN Y REGISTRO
 exports.registro = async (req, res) => {
     const { nombre, email, password } = req.body;
-    if (!nombre || !email || !password) return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+    
+    // 1. Validar que no lleguen datos vacíos
+    if (!nombre || !email || !password) {
+        return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+    }
+
+    // 2. REGLA: Obligar a usar un formato de email válido (ej: usuario@correo.com)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Por favor, ingresá un correo electrónico válido' });
+    }
+
+    // 3. REGLA: Contraseña de al menos 6 caracteres
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+
     try {
+        // 4. REGLA: No crear más de una cuenta por persona (Email único)
         const [existe] = await db.query('SELECT id FROM Usuarios WHERE email = ?', [email]);
-        if (existe.length > 0) return res.status(400).json({ error: 'Este correo ya está registrado' });
+        if (existe.length > 0) {
+            return res.status(400).json({ error: 'Ya existe una cuenta registrada con este correo' });
+        }
+
+        // Si pasó todos los filtros de seguridad, encriptamos y guardamos
         const hash = await bcrypt.hash(password, 10);
         await db.query('INSERT INTO Usuarios (nombre, email, password_hash) VALUES (?, ?, ?)', [nombre, email, hash]);
         res.status(201).json({ mensaje: '¡Cuenta creada con éxito!' });
-    } catch (e) { res.status(500).json({ error: 'Error al registrar', detalle: e.message }); }
+        
+    } catch (e) { 
+        console.error("💥 ERROR EN REGISTRO:", e);
+        res.status(500).json({ error: 'Error al registrar', detalle: e.message }); 
+    }
+};
+exports.recuperarPassword = async (req, res) => {
+    const { email, nuevaPassword } = req.body;
+
+    if (!email || !nuevaPassword) {
+        return res.status(400).json({ error: 'Completá todos los campos' });
+    }
+    
+    if (nuevaPassword.length < 6) {
+        return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    }
+
+    try {
+        // 1. Buscamos si el email realmente existe en nuestra base
+        const [existe] = await db.query('SELECT id FROM Usuarios WHERE email = ?', [email]);
+        if (existe.length === 0) {
+            return res.status(404).json({ error: 'No encontramos ninguna cuenta con ese correo.' });
+        }
+
+        // 2. Si existe, encriptamos la nueva clave y la pisamos en la base de datos
+        const hash = await bcrypt.hash(nuevaPassword, 10);
+        await db.query('UPDATE Usuarios SET password_hash = ? WHERE email = ?', [hash, email]);
+
+        res.json({ mensaje: '¡Contraseña actualizada con éxito! Ya podés iniciar sesión.' });
+    } catch (e) {
+        console.error("💥 ERROR EN RECUPERAR PASSWORD:", e);
+        res.status(500).json({ error: 'Error interno del servidor', detalle: e.message });
+    }
+};
+// 📋 PLANTILLAS DE EVENTOS (Eventos Predeterminados)
+exports.getPlantillas = async (req, res) => {
+    try {
+        // Truco: Creamos la tabla al vuelo si no existe
+        try { await db.query('CREATE TABLE IF NOT EXISTS Plantillas (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(255), tragos JSON)'); } catch(e) {}
+        
+        const [rows] = await db.query('SELECT * FROM Plantillas ORDER BY id DESC');
+        res.json(rows);
+    } catch (e) { res.status(500).json({ error: 'Error al obtener plantillas', detalle: e.message }); }
+};
+
+exports.crearPlantilla = async (req, res) => {
+    const { nombre, tragos } = req.body;
+    if (!nombre || !tragos) return res.status(400).json({ error: 'Faltan datos' });
+
+    try {
+        // Truco: Creamos la tabla al vuelo si no existe
+        try { await db.query('CREATE TABLE IF NOT EXISTS Plantillas (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(255), tragos JSON)'); } catch(e) {}
+        
+        await db.query('INSERT INTO Plantillas (nombre, tragos) VALUES (?, ?)', [nombre, JSON.stringify(tragos)]);
+        res.status(201).json({ mensaje: 'Plantilla guardada con éxito' });
+    } catch (e) { res.status(500).json({ error: 'Error al guardar plantilla', detalle: e.message }); }
 };
