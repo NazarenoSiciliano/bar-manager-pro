@@ -9,6 +9,8 @@ const productosController = require('../controllers/productosController');
 // RUTA DE PLANTILLAS (ponerlas antes de los :id)
 router.get('/plantillas', productosController.getPlantillas);
 router.post('/plantillas', productosController.crearPlantilla);
+router.delete('/plantillas/:id', productosController.eliminarPlantilla);
+router.put('/plantillas/:id', productosController.actualizarPlantilla);
 
 
 
@@ -35,6 +37,7 @@ router.get('/categorias', async (req, res) => {
 router.get('/tragos', ctrl.getTragos);
 router.get('/recetas-detalle', ctrl.getRecetasDetalle);
 router.post('/recetas', ctrl.crearReceta);
+router.put('/recetas/:id', productosController.actualizarReceta);
 router.delete('/recetas/:id', ctrl.eliminarReceta);
 router.post('/calcular-evento', ctrl.calcularEvento);
 router.post('/recuperar-password', productosController.recuperarPassword);

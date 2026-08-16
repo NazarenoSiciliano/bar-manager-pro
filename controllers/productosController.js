@@ -92,7 +92,7 @@ exports.getTragos = async (req, res) => {
 exports.getRecetasDetalle = async (req, res) => {
     try {
         const [tragos] = await db.query('SELECT * FROM Tragos ORDER BY id DESC');
-        const query = `SELECT r.trago_id, i.nombre, r.cantidad, i.unidad_medida, (i.costo / i.cantidad) * r.cantidad AS costo_ingrediente FROM Recetas r JOIN Ingredientes i ON r.ingrediente_id = i.id`;
+        const query = `SELECT r.trago_id, r.ingrediente_id, i.nombre, r.cantidad, i.unidad_medida, (i.costo / i.cantidad) * r.cantidad AS costo_ingrediente FROM Recetas r JOIN Ingredientes i ON r.ingrediente_id = i.id`;
         const [ingredientes] = await db.query(query);
 
         res.json(tragos.map(trago => {
@@ -130,6 +130,23 @@ exports.eliminarReceta = async (req, res) => {
         await db.query('DELETE FROM Recetas WHERE trago_id = ?', [req.params.id]);
         await db.query('DELETE FROM Tragos WHERE id = ?', [req.params.id]);
         res.json({ mensaje: 'Receta eliminada' });
+    } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
+};
+exports.actualizarReceta = async (req, res) => {
+    const { id } = req.params;
+    const { nombre, precio_venta, ingredientes } = req.body;
+    try {
+        // 1. Actualizamos el nombre y precio del trago
+        await db.query('UPDATE Tragos SET nombre = ?, precio_venta = ? WHERE id = ?', [nombre, precio_venta || 0, id]);
+        
+        // 2. Borramos los ingredientes viejos
+        await db.query('DELETE FROM Recetas WHERE trago_id = ?', [id]);
+        
+        // 3. Insertamos los ingredientes nuevos/editados
+        for (let item of ingredientes) {
+            await db.query('INSERT INTO Recetas (trago_id, ingrediente_id, cantidad) VALUES (?, ?, ?)', [id, item.ingrediente_id, item.cantidad]);
+        }
+        res.json({ mensaje: 'Receta actualizada con éxito' });
     } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
 
@@ -300,4 +317,25 @@ exports.crearPlantilla = async (req, res) => {
         await db.query('INSERT INTO Plantillas (nombre, tragos) VALUES (?, ?)', [nombre, JSON.stringify(tragos)]);
         res.status(201).json({ mensaje: 'Plantilla guardada con éxito' });
     } catch (e) { res.status(500).json({ error: 'Error al guardar plantilla', detalle: e.message }); }
+};
+exports.eliminarPlantilla = async (req, res) => {
+    try { 
+        await db.query('DELETE FROM Plantillas WHERE id = ?', [req.params.id]); 
+        res.json({ mensaje: 'Plantilla eliminada' }); 
+    } catch (e) { res.status(500).json({ error: 'Error al eliminar', detalle: e.message }); }
+};
+
+exports.actualizarPlantilla = async (req, res) => {
+    const { id } = req.params;
+    const { nombre, tragos } = req.body;
+    try {
+        if (tragos) {
+            // Actualiza tanto el nombre como los tragos (Sobreescribir)
+            await db.query('UPDATE Plantillas SET nombre = ?, tragos = ? WHERE id = ?', [nombre, JSON.stringify(tragos), id]);
+        } else {
+            // Solo actualiza el nombre (Renombrar)
+            await db.query('UPDATE Plantillas SET nombre = ? WHERE id = ?', [nombre, id]);
+        }
+        res.json({ mensaje: 'Plantilla actualizada' });
+    } catch (e) { res.status(500).json({ error: 'Error al actualizar', detalle: e.message }); }
 };
