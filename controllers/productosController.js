@@ -5,6 +5,10 @@ const jwt = require('jsonwebtoken');
 // 📦 INVENTARIO Y CATEGORÍAS
 exports.getProductos = async (req, res) => {
     try {
+        // TRUCO: El sistema intenta crear la columna por su cuenta. 
+        // Si ya existe (tira error), el catch lo ignora y sigue funcionando normal.
+        try { await db.query('ALTER TABLE Ingredientes ADD COLUMN codigo_barras VARCHAR(255)'); } catch(err) {}
+
         const query = `
             SELECT i.id, i.nombre, c.nombre as tipo, i.costo as precio, i.cantidad, i.unidad_medida, i.codigo_barras 
             FROM Ingredientes i JOIN Categorias c ON i.categoria_id = c.id ORDER BY i.id DESC
