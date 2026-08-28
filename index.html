@@ -54,6 +54,7 @@
 </head>
 <body>
 
+    <!-- Select oculto para mantener cargados los ingredientes para las modales -->
     <select id="select-ingredientes" style="display: none;"></select>
 
     <div class="navbar">
@@ -168,14 +169,17 @@
                 <h2 style="margin: 0;">Agenda de Eventos</h2>
                 <button class="btn-accion" style="background-color: #9b59b6;" onclick="toggleFormulario('form-agenda')"><i class="ti ti-calendar-plus"></i> Nuevo Evento Manual</button>
             </div>
-            <div id="modal-scanner" class="card-formulario" style="display: none; border-left: 5px solid #27ae60; max-width: 600px; margin: 0 auto;">
-    <h3 style="margin-top:0;"><i class="ti ti-box"></i> Armar Cajas para Evento</h3>
-    <div id="reader" style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px;"></div>
-    <h4>Lista de Insumos:</h4>
-    <ul id="lista-checklist" class="lista-mezcla" style="max-height: 250px; overflow-y: auto;"></ul>
-    <button class="btn-accion" style="background-color: #e74c3c; width: 100%; margin-top: 15px;" onclick="cerrarScanner()"><i class="ti ti-x"></i> Cerrar</button>
- </div>
+            
+            <!-- Modal para escanear botellas -->
+            <div id="modal-scanner" class="card-formulario" style="display: none; border-left: 5px solid #27ae60; max-width: 600px; margin: 0 auto 30px auto;">
+                <h3 style="margin-top:0;"><i class="ti ti-box"></i> Armar Cajas para Evento</h3>
+                <div id="reader" style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 15px;"></div>
+                <h4>Lista de Insumos:</h4>
+                <ul id="lista-checklist" class="lista-mezcla" style="max-height: 250px; overflow-y: auto;"></ul>
+                <button class="btn-accion" style="background-color: #e74c3c; width: 100%; margin-top: 15px;" onclick="cerrarScanner()"><i class="ti ti-x"></i> Cerrar Escáner</button>
+            </div>
 
+            <!-- Modal crear evento manual -->
             <div id="form-agenda" class="card-formulario" style="display: none; border-left: 5px solid #9b59b6; max-width: 800px; margin: 0 auto 30px auto;">
                 <h3><i class="ti ti-calendar-plus"></i> Agendar Cliente</h3>
                 <div class="formulario-inline" style="flex-direction: column; align-items: stretch;">
@@ -198,13 +202,16 @@
     </div>
 
     <script>
+        // Formateo de dinero (ej. 10.000,00)
         function formatoMoneda(numero) { return new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numero); }
 
         const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
 
+        // Verificamos sesión
         if (!localStorage.getItem('bar_token') && window.location.pathname.endsWith('index.html')) window.location.href = 'login.html';
         function cerrarSesion() { localStorage.removeItem('bar_token'); window.location.href = 'login.html'; }
         
+        // Función para cambiar de pestañas
         function cambiarSeccion(id, btn) { 
             document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa')); 
             document.getElementById(id).classList.add('activa'); 
@@ -284,7 +291,7 @@
             } catch (e) { console.error("Error cargando Dashboard:", e); }
         }
 
-        // --- INVENTARIO (CON CÓDIGO DE BARRAS) ---
+        // --- INVENTARIO ---
         function filtrarInventario() { const categoriaElegida = document.getElementById('filtro-inventario').value; document.querySelectorAll('#lista-categorias li:not(.encabezado-tabla)').forEach(li => { const categoriaItem = li.getAttribute('data-categoria'); li.style.display = (categoriaElegida === '' || categoriaItem === categoriaElegida) ? 'flex' : 'none'; }); }
 
         async function cargarSelectCategorias() { try { const res = await fetch('/api/categorias', { headers: getHeaders(false) }); const categorias = await res.json(); const selectFiltro = document.getElementById('filtro-inventario'); selectFiltro.innerHTML = '<option value="">Todas las categorías</option>'; categorias.forEach(c => { selectFiltro.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; }); } catch (e) { console.error(e); } }
@@ -521,7 +528,7 @@
             }
         }
         
-async function carAge() {
+        async function carAge() {
             const evs = await (await fetch('/api/agenda', { headers: getHeaders(false) })).json(); const l = document.getElementById('lista-agenda');
             l.innerHTML = `<li class="encabezado-tabla"><div style="flex: 2; min-width: 150px;">Cliente</div><div style="flex: 1; min-width: 120px;">Fecha</div><div style="flex: 1.5; min-width: 150px;">Dirección</div><div style="flex: 1; min-width: 120px;">Presupuesto</div><div style="flex: 0.5; text-align: right;">Acciones</div></li>`;
             if (!evs.length) { l.innerHTML += '<li style="padding: 15px; color: #7f8c8d;">No hay eventos agendados aún.</li>'; return; }
@@ -540,7 +547,6 @@ async function carAge() {
                 </li>`;
             });
         }
-        }
         
         async function borrarAgendaConfirm(id, cliente) { if ((await Swal.fire({ title: `¿Borrar evento de ${cliente}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Borrar' })).isConfirmed) { await fetch(`/api/agenda/${id}`, { method: 'DELETE', headers: getHeaders(false) }); carAge(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Evento eliminado' }); } }
         
@@ -552,6 +558,16 @@ async function carAge() {
                 ['cliente','fecha','direccion','cotizacion','detalles'].forEach(id => document.getElementById(`agenda-${id}`).value = ''); 
                 toggleFormulario('form-agenda'); carAge(); cargarDashboard();
             }
+        }
+
+        // Funciones temporales para que el botón de escanear no de error si lo tocás.
+        function abrirScanner(id) {
+            document.getElementById('modal-scanner').style.display = 'block';
+            document.getElementById('modal-scanner').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function cerrarScanner() {
+            document.getElementById('modal-scanner').style.display = 'none';
         }
 
         window.onload = () => { cargarSelectCategorias(); cargarCategorias(); carTra(); carRec(); carAge(); cargarPlantillasVisuales(); cargarDashboard(); };
