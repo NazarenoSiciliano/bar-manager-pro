@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 exports.getProductos = async (req, res) => {
     try {
         const query = `
-            SELECT i.id, i.nombre, c.nombre as tipo, i.costo as precio, i.cantidad, i.unidad_medida 
+            SELECT i.id, i.nombre, c.nombre as tipo, i.costo as precio, i.cantidad, i.unidad_medida, i.codigo_barras 
             FROM Ingredientes i JOIN Categorias c ON i.categoria_id = c.id ORDER BY i.id DESC
         `;
         const [filas] = await db.query(query);
@@ -31,13 +31,13 @@ exports.crearCategoria = async (req, res) => {
 };
 
 exports.crearProducto = async (req, res) => {
-    const { nombre, tipo, precio, cantidad, unidad_medida } = req.body;
+    const { nombre, tipo, precio, cantidad, unidad_medida, codigo_barras } = req.body;
     try {
         let [categorias] = await db.query('SELECT id FROM Categorias WHERE nombre = ?', [tipo]);
         let categoria_id = categorias.length === 0 ? (await db.query('INSERT INTO Categorias (nombre) VALUES (?)', [tipo]))[0].insertId : categorias[0].id;
         
-        await db.query('INSERT INTO Ingredientes (nombre, categoria_id, cantidad, unidad_medida, costo) VALUES (?, ?, ?, ?, ?)', 
-            [nombre, categoria_id, cantidad, unidad_medida, precio]);
+        await db.query('INSERT INTO Ingredientes (nombre, categoria_id, cantidad, unidad_medida, costo, codigo_barras) VALUES (?, ?, ?, ?, ?, ?)', 
+            [nombre, categoria_id, cantidad, unidad_medida, precio, codigo_barras || null]);
         res.status(201).json({ mensaje: 'Ingrediente creado' });
     } catch (e) { res.status(500).json({ error: 'Error al guardar', detalle: e.message }); }
 };
@@ -63,13 +63,13 @@ exports.cargaMasiva = async (req, res) => {
 
 exports.actualizarProducto = async (req, res) => {
     const { id } = req.params;
-    const { nombre, tipo, precio, cantidad, unidad_medida } = req.body;
+    const { nombre, tipo, precio, cantidad, unidad_medida, codigo_barras } = req.body;
     try {
         let [categorias] = await db.query('SELECT id FROM Categorias WHERE nombre = ?', [tipo]);
         let categoria_id = categorias.length === 0 ? (await db.query('INSERT INTO Categorias (nombre) VALUES (?)', [tipo]))[0].insertId : categorias[0].id;
         
-        await db.query('UPDATE Ingredientes SET nombre = ?, categoria_id = ?, costo = ?, cantidad = ?, unidad_medida = ? WHERE id = ?', 
-            [nombre, categoria_id, precio, cantidad, unidad_medida, id]);
+        await db.query('UPDATE Ingredientes SET nombre = ?, categoria_id = ?, costo = ?, cantidad = ?, unidad_medida = ?, codigo_barras = ? WHERE id = ?', 
+            [nombre, categoria_id, precio, cantidad, unidad_medida, codigo_barras || null, id]);
         res.json({ mensaje: 'Actualizado con éxito' });
     } catch (e) { res.status(500).json({ error: 'Error al actualizar', detalle: e.message }); }
 };
@@ -112,8 +112,7 @@ exports.getRecetasDetalle = async (req, res) => {
 exports.crearReceta = async (req, res) => {
     const { nombre, ingredientes, precio_venta } = req.body;
     try {
-        // TRUCO: Si la columna precio_venta no existe en Aiven, la creamos al vuelo sin usar DBeaver
-        try { await db.query('ALTER TABLE Tragos ADD COLUMN precio_venta DECIMAL(10,2) DEFAULT 0'); } catch(err) { /* Si ya existe, ignoramos el error */ }
+        try { await db.query('ALTER TABLE Tragos ADD COLUMN precio_venta DECIMAL(10,2) DEFAULT 0'); } catch(err) { }
 
         const [resultado] = await db.query('INSERT INTO Tragos (nombre, descripcion, precio_venta) VALUES (?, ?, ?)', [nombre, '', precio_venta || 0]);
         const trago_id = resultado.insertId;
@@ -132,17 +131,13 @@ exports.eliminarReceta = async (req, res) => {
         res.json({ mensaje: 'Receta eliminada' });
     } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
+
 exports.actualizarReceta = async (req, res) => {
     const { id } = req.params;
     const { nombre, precio_venta, ingredientes } = req.body;
     try {
-        // 1. Actualizamos el nombre y precio del trago
         await db.query('UPDATE Tragos SET nombre = ?, precio_venta = ? WHERE id = ?', [nombre, precio_venta || 0, id]);
-        
-        // 2. Borramos los ingredientes viejos
         await db.query('DELETE FROM Recetas WHERE trago_id = ?', [id]);
-        
-        // 3. Insertamos los ingredientes nuevos/editados
         for (let item of ingredientes) {
             await db.query('INSERT INTO Recetas (trago_id, ingrediente_id, cantidad) VALUES (?, ?, ?)', [id, item.ingrediente_id, item.cantidad]);
         }
@@ -153,10 +148,8 @@ exports.actualizarReceta = async (req, res) => {
 // 📊 COTIZADOR LOGÍSTICO POR PERSONA
 exports.calcularEvento = async (req, res) => {
     const { tragos_evento, personas, consumo_por_persona } = req.body;
-    
     if (!tragos_evento || !personas) return res.status(400).json({ error: 'Faltan datos' });
 
-    // Matemática del evento:
     const totalTragos = personas * (consumo_por_persona || 4);
     const tragosPorReceta = Math.ceil(totalTragos / tragos_evento.length); 
 
@@ -165,7 +158,6 @@ exports.calcularEvento = async (req, res) => {
         let listaCompras = {};
 
         for (let item of tragos_evento) {
-            // CORRECCIÓN: Tu tabla se llama Ingredientes y la columna de precio se llama costo
             const [recetas] = await db.query(`
                 SELECT r.cantidad, i.nombre, i.unidad_medida, i.costo, i.cantidad as formato_cantidad 
                 FROM Recetas r 
@@ -173,7 +165,6 @@ exports.calcularEvento = async (req, res) => {
                 WHERE r.trago_id = ?`, [item.trago_id]);
 
             for (let ing of recetas) {
-                // Matemática de insumos
                 const cantidadNecesaria = ing.cantidad * tragosPorReceta;
                 const costoIngrediente = (ing.costo / ing.formato_cantidad) * cantidadNecesaria;
                 costoTotalEvento += costoIngrediente;
@@ -186,7 +177,6 @@ exports.calcularEvento = async (req, res) => {
             }
         }
 
-        // Matemática Logística basada en Personas:
         const bartenders = Math.ceil(personas / 40); 
         const runners = Math.ceil(personas / 100);   
         const barras = Math.ceil(personas / 80);     
@@ -203,15 +193,18 @@ exports.calcularEvento = async (req, res) => {
         res.status(500).json({ error: 'Error', detalle: e.message }); 
     }
 };
+
 // 📅 AGENDA
 exports.getAgenda = async (req, res) => {
     try { res.json((await db.query('SELECT * FROM Agenda ORDER BY fecha ASC'))[0]); } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
 
 exports.crearAgenda = async (req, res) => {
-    const { cliente, fecha, direccion, cotizacion_total, detalles } = req.body;
+    const { cliente, fecha, direccion, cotizacion_total, detalles, insumos } = req.body;
     try {
-        await db.query('INSERT INTO Agenda (cliente, fecha, direccion, cotizacion_total, detalles) VALUES (?, ?, ?, ?, ?)', [cliente, fecha, direccion, cotizacion_total || 0, detalles || '']);
+        // Aseguramos que soporte la columna insumos
+        await db.query('INSERT INTO Agenda (cliente, fecha, direccion, cotizacion_total, detalles, insumos) VALUES (?, ?, ?, ?, ?, ?)', 
+            [cliente, fecha, direccion, cotizacion_total || 0, detalles || '', JSON.stringify(insumos || [])]);
         res.status(201).json({ mensaje: 'Agendado' });
     } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
@@ -230,62 +223,38 @@ exports.login = async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Error en el servidor', detalle: e.message }); }
 };
 
-// 🔐 AUTENTICACIÓN Y REGISTRO
+// 🔐 REGISTRO
 exports.registro = async (req, res) => {
     const { nombre, email, password } = req.body;
-    
-    // 1. Validar que no lleguen datos vacíos
-    if (!nombre || !email || !password) {
-        return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-    }
+    if (!nombre || !email || !password) return res.status(400).json({ error: 'Todos los campos son obligatorios' });
 
-    // 2. REGLA: Obligar a usar un formato de email válido (ej: usuario@correo.com)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        return res.status(400).json({ error: 'Por favor, ingresá un correo electrónico válido' });
-    }
+    if (!emailRegex.test(email)) return res.status(400).json({ error: 'Por favor, ingresá un correo electrónico válido' });
 
-    // 3. REGLA: Contraseña de al menos 6 caracteres
-    if (password.length < 6) {
-        return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
-    }
+    if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
 
     try {
-        // 4. REGLA: No crear más de una cuenta por persona (Email único)
         const [existe] = await db.query('SELECT id FROM Usuarios WHERE email = ?', [email]);
-        if (existe.length > 0) {
-            return res.status(400).json({ error: 'Ya existe una cuenta registrada con este correo' });
-        }
+        if (existe.length > 0) return res.status(400).json({ error: 'Ya existe una cuenta registrada con este correo' });
 
-        // Si pasó todos los filtros de seguridad, encriptamos y guardamos
         const hash = await bcrypt.hash(password, 10);
         await db.query('INSERT INTO Usuarios (nombre, email, password_hash) VALUES (?, ?, ?)', [nombre, email, hash]);
         res.status(201).json({ mensaje: '¡Cuenta creada con éxito!' });
-        
     } catch (e) { 
         console.error("💥 ERROR EN REGISTRO:", e);
         res.status(500).json({ error: 'Error al registrar', detalle: e.message }); 
     }
 };
+
 exports.recuperarPassword = async (req, res) => {
     const { email, nuevaPassword } = req.body;
-
-    if (!email || !nuevaPassword) {
-        return res.status(400).json({ error: 'Completá todos los campos' });
-    }
-    
-    if (nuevaPassword.length < 6) {
-        return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
-    }
+    if (!email || !nuevaPassword) return res.status(400).json({ error: 'Completá todos los campos' });
+    if (nuevaPassword.length < 6) return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
 
     try {
-        // 1. Buscamos si el email realmente existe en nuestra base
         const [existe] = await db.query('SELECT id FROM Usuarios WHERE email = ?', [email]);
-        if (existe.length === 0) {
-            return res.status(404).json({ error: 'No encontramos ninguna cuenta con ese correo.' });
-        }
+        if (existe.length === 0) return res.status(404).json({ error: 'No encontramos ninguna cuenta con ese correo.' });
 
-        // 2. Si existe, encriptamos la nueva clave y la pisamos en la base de datos
         const hash = await bcrypt.hash(nuevaPassword, 10);
         await db.query('UPDATE Usuarios SET password_hash = ? WHERE email = ?', [hash, email]);
 
@@ -295,12 +264,11 @@ exports.recuperarPassword = async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor', detalle: e.message });
     }
 };
-// 📋 PLANTILLAS DE EVENTOS (Eventos Predeterminados)
+
+// 📋 PLANTILLAS DE EVENTOS
 exports.getPlantillas = async (req, res) => {
     try {
-        // Truco: Creamos la tabla al vuelo si no existe
         try { await db.query('CREATE TABLE IF NOT EXISTS Plantillas (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(255), tragos JSON)'); } catch(e) {}
-        
         const [rows] = await db.query('SELECT * FROM Plantillas ORDER BY id DESC');
         res.json(rows);
     } catch (e) { res.status(500).json({ error: 'Error al obtener plantillas', detalle: e.message }); }
@@ -311,13 +279,12 @@ exports.crearPlantilla = async (req, res) => {
     if (!nombre || !tragos) return res.status(400).json({ error: 'Faltan datos' });
 
     try {
-        // Truco: Creamos la tabla al vuelo si no existe
         try { await db.query('CREATE TABLE IF NOT EXISTS Plantillas (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(255), tragos JSON)'); } catch(e) {}
-        
         await db.query('INSERT INTO Plantillas (nombre, tragos) VALUES (?, ?)', [nombre, JSON.stringify(tragos)]);
         res.status(201).json({ mensaje: 'Plantilla guardada con éxito' });
     } catch (e) { res.status(500).json({ error: 'Error al guardar plantilla', detalle: e.message }); }
 };
+
 exports.eliminarPlantilla = async (req, res) => {
     try { 
         await db.query('DELETE FROM Plantillas WHERE id = ?', [req.params.id]); 
@@ -330,10 +297,8 @@ exports.actualizarPlantilla = async (req, res) => {
     const { nombre, tragos } = req.body;
     try {
         if (tragos) {
-            // Actualiza tanto el nombre como los tragos (Sobreescribir)
             await db.query('UPDATE Plantillas SET nombre = ?, tragos = ? WHERE id = ?', [nombre, JSON.stringify(tragos), id]);
         } else {
-            // Solo actualiza el nombre (Renombrar)
             await db.query('UPDATE Plantillas SET nombre = ? WHERE id = ?', [nombre, id]);
         }
         res.json({ mensaje: 'Plantilla actualizada' });
