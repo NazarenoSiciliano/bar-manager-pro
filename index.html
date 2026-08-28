@@ -731,6 +731,47 @@
         }
 
         window.onload = () => { cargarDatosInventario(); carTra(); carRec(); carAge(); cargarPlantillasVisuales(); };
+        // --- CARGA CENTRALIZADA ---
+        async function cargarDatosInventario() {
+            try {
+                const res = await fetch('/api/productos', { headers: getHeaders(false) }); 
+                if (!res.ok) {
+                    const error = await res.json();
+                    Swal.fire('Error del Servidor', 'Detalle: ' + error.detalle, 'error');
+                    return; // Frena acá para no romper la pantalla
+                }
+                inventarioGlobal = await res.json(); 
+                
+                const resCat = await fetch('/api/categorias', { headers: getHeaders(false) }); 
+                const categorias = await resCat.json(); 
+
+                const resProv = await fetch('/api/productos/proveedores', { headers: getHeaders(false) });
+                proveedoresGlobal = resProv.ok ? await resProv.json() : [];
+                
+                const selCat = document.getElementById('filtro-catalogo');
+                const selStockCat = document.getElementById('filtro-stock-categoria');
+                selCat.innerHTML = '<option value="">Todas las categorías</option>'; 
+                selStockCat.innerHTML = '<option value="">Todas las categorías</option>'; 
+                categorias.forEach(c => { 
+                    selCat.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; 
+                    selStockCat.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; 
+                });
+
+                const selStockProv = document.getElementById('filtro-stock-proveedor');
+                selStockProv.innerHTML = '<option value="">Todos los Proveedores</option>';
+                const proveedoresUnicos = [...new Set(inventarioGlobal.map(p => p.proveedor).filter(p => p && p.trim() !== ''))];
+                proveedoresUnicos.forEach(prov => { selStockProv.innerHTML += `<option value="${prov}">${prov}</option>`; });
+
+                const selIng = document.getElementById('select-ingredientes');
+                selIng.innerHTML = '<option value="">Seleccionar ingrediente...</option>'; 
+                inventarioGlobal.forEach(p => { selIng.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-formato="${p.cantidad}">${p.nombre} (en ${p.unidad_medida})</option>`; });
+
+                renderizarCatalogo(); renderizarStock(); renderizarProveedores(); cargarDashboard(); 
+            } catch (e) { 
+                console.error(e);
+                Swal.fire('Atención', 'Hubo un error cargando los datos. Revisá la consola de tu servidor.', 'error');
+            }
+        }
     </script>
 </body>
 </html>
