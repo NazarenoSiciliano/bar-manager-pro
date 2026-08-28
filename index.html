@@ -538,6 +538,11 @@
                     ${e.detalles ? `<div style="width: 100%; font-size: 0.85em; color: #7f8c8d; margin-top: 8px;"><i class="ti ti-notes"></i> <em>"${e.detalles}"</em></div>` : ''}
                 </li>`;
             });
+            // BUSCÁ ESTA LÍNEA en tu función carAge() actual y agregale el botón azul de Armar Cajas:
+<div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
+    ${e.insumos && e.insumos.length > 2 ? `<button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="abrirScanner(${e.id})" title="Armar Cajas"><i class="ti ti-box"></i></button>` : ''}
+    <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarAgendaConfirm(${e.id}, '${e.cliente}')"><i class="ti ti-x"></i></button>
+</div>
         }
         
         async function borrarAgendaConfirm(id, cliente) { if ((await Swal.fire({ title: `¿Borrar evento de ${cliente}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Borrar' })).isConfirmed) { await fetch(`/api/agenda/${id}`, { method: 'DELETE', headers: getHeaders(false) }); carAge(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Evento eliminado' }); } }
