@@ -53,7 +53,6 @@
 </head>
 <body>
 
-    <!-- Select oculto para mantener cargados los ingredientes para las modales -->
     <select id="select-ingredientes" style="display: none;"></select>
 
     <div class="navbar">
@@ -70,28 +69,19 @@
 
     <div class="main-content">
 
-        <!-- DASHBOARD (NUEVO) -->
+        <!-- DASHBOARD (INICIO) -->
         <div id="sec-dashboard" class="seccion activa">
             <h2 style="margin-top:0; color: #2c3e50;">Panel de Control</h2>
             <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                
-                <!-- Próximos Eventos -->
                 <div class="card-formulario" style="flex: 2; min-width: 300px; border-top: 5px solid #3498db;">
                     <h3 style="margin-top: 0; color: #2c3e50;"><i class="ti ti-calendar-event"></i> Próximos Eventos</h3>
-                    <ul id="dash-eventos" class="grid-productos" style="border-radius: 8px; overflow: hidden; border: 1px solid #eee;">
-                        <!-- Se llena con JS -->
-                    </ul>
+                    <ul id="dash-eventos" class="grid-productos" style="border-radius: 8px; overflow: hidden; border: 1px solid #eee;"></ul>
                 </div>
-                
-                <!-- Análisis de Stock (Proyección) -->
                 <div class="card-formulario" style="flex: 1.5; min-width: 300px; border-top: 5px solid #e74c3c;">
                     <h3 style="margin-top: 0; color: #2c3e50;"><i class="ti ti-alert-triangle"></i> Análisis de Stock Crítico</h3>
                     <p style="font-size: 0.85em; color: #666; margin-bottom: 15px;">El sistema cruza tu inventario actual contra todo lo que vas a necesitar para los eventos futuros.</p>
-                    <ul id="dash-alertas" class="lista-mezcla" style="border-radius: 8px; overflow: hidden; border: 1px solid #eee;">
-                        <!-- Se llena con JS -->
-                    </ul>
+                    <ul id="dash-alertas" class="lista-mezcla" style="border-radius: 8px; overflow: hidden; border: 1px solid #eee;"></ul>
                 </div>
-
             </div>
         </div>
 
@@ -143,14 +133,8 @@
                 </div>
 
                 <div class="formulario-inline" style="margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
-                    <div style="flex: 1;">
-                        <label style="font-weight: bold;"><i class="ti ti-users"></i> Cant. Invitados</label>
-                        <input type="number" id="evento-personas" placeholder="Ej: 80" style="font-size: 1.2em; font-weight: bold; color: #2c3e50;">
-                    </div>
-                    <div style="flex: 1;">
-                        <label style="font-weight: bold;"><i class="ti ti-glass-full"></i> Tragos x Persona</label>
-                        <input type="number" id="evento-consumo" value="6" title="Promedio estimado" style="font-size: 1.2em;">
-                    </div>
+                    <div style="flex: 1;"><label style="font-weight: bold;"><i class="ti ti-users"></i> Cant. Invitados</label><input type="number" id="evento-personas" placeholder="Ej: 80" style="font-size: 1.2em; font-weight: bold; color: #2c3e50;"></div>
+                    <div style="flex: 1;"><label style="font-weight: bold;"><i class="ti ti-glass-full"></i> Tragos x Persona</label><input type="number" id="evento-consumo" value="6" title="Promedio estimado" style="font-size: 1.2em;"></div>
                 </div>
 
                 <div class="formulario-inline">
@@ -221,16 +205,13 @@
         }
 
         function toggleFormulario(id) {
-            const el = document.getElementById(id);
-            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+            const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? 'block' : 'none';
         }
 
         // --- VARIABLES GLOBALES ---
         let mezclaActual = []; let tragosEventoActual = []; let plantillasGuardadas = [];
         let costoActualReceta = 0; let costoNetoEventoActual = 0; let totalCobrarEventoActual = 0;
         let recetaEditandoId = null; let recetasGuardadasData = []; let tragosPlantillaActual = [];
-        
-        // NUEVA VARIABLE: Guarda la lista del supermercado generada por el cotizador para enviarla a la Agenda
         let comprasEventoActual = []; 
 
         function getHeaders(incluirContentType = true) {
@@ -243,69 +224,42 @@
         // --- DASHBOARD (INICIO) ---
         async function cargarDashboard() {
             try {
-                // 1. Traemos la Agenda y el Inventario
-                const resAge = await fetch('/api/agenda', { headers: getHeaders(false) });
-                const agenda = await resAge.json();
-                
-                const resInv = await fetch('/api/productos', { headers: getHeaders(false) });
-                const inventario = await resInv.json();
-
+                const resAge = await fetch('/api/agenda', { headers: getHeaders(false) }); const agenda = await resAge.json();
+                const resInv = await fetch('/api/productos', { headers: getHeaders(false) }); const inventario = await resInv.json();
                 const hoy = new Date(); hoy.setHours(0,0,0,0);
                 
-                // 2. Filtramos solo eventos de hoy en adelante, ordenados por fecha cercana
                 const futuros = agenda.filter(e => new Date(e.fecha) >= hoy).sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
-
-                // 3. Renderizar Lista de Eventos en el Dashboard
                 const listaEv = document.getElementById('dash-eventos');
+                
                 if(futuros.length === 0) {
                     listaEv.innerHTML = '<li style="padding: 20px; color: #7f8c8d; text-align: center;">No tenés próximos eventos agendados.</li>';
                 } else {
                     listaEv.innerHTML = futuros.map(e => `
                         <li class="fila-inventario" style="padding: 12px 20px; border-left: 4px solid #3498db;">
-                            <div style="flex: 2;">
-                                <strong style="color:#2c3e50; font-size: 1.1em;">${e.cliente}</strong><br>
-                                <span style="font-size: 0.9em; color: #e67e22; font-weight: bold;"><i class="ti ti-calendar"></i> ${new Date(e.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</span>
-                            </div>
-                            <div style="text-align:right;">
-                                <span style="color:#27ae60; font-weight:bold; font-size: 1.1em;">$${formatoMoneda(e.cotizacion_total)}</span>
-                            </div>
+                            <div style="flex: 2;"><strong style="color:#2c3e50; font-size: 1.1em;">${e.cliente}</strong><br><span style="font-size: 0.9em; color: #e67e22; font-weight: bold;"><i class="ti ti-calendar"></i> ${new Date(e.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</span></div>
+                            <div style="text-align:right;"><span style="color:#27ae60; font-weight:bold; font-size: 1.1em;">$${formatoMoneda(e.cotizacion_total)}</span></div>
                         </li>
                     `).join('');
                 }
 
-                // 4. EL CEREBRO DE LA PROYECCIÓN DE STOCK
-                // Hacemos una copia virtual de nuestro inventario para ir "restándole" lo que consumen los eventos
                 let stockProyectado = inventario.map(p => ({ ...p }));
                 let alertasStock = [];
 
-                // Recorremos los eventos futuros
                 futuros.forEach(evento => {
-                    if (evento.insumos) { // Solo si el evento tiene insumos guardados (generados desde el cotizador)
+                    if (evento.insumos) {
                         let insumosRequeridos = typeof evento.insumos === 'string' ? JSON.parse(evento.insumos) : evento.insumos;
-                        
                         insumosRequeridos.forEach(insumo => {
-                            // Buscamos el ingrediente en nuestro inventario virtual por coincidencia de nombre
                             let itemEnStock = stockProyectado.find(p => p.nombre.toLowerCase() === insumo.ingrediente.toLowerCase());
-                            if (itemEnStock) {
-                                // Le restamos lo que se va a consumir
-                                itemEnStock.cantidad -= insumo.cantidadTotal;
-                            } else {
-                                // Si nos piden algo que directamente NO tenemos en inventario
-                                alertasStock.push({ nombre: insumo.ingrediente, faltante: insumo.cantidadTotal, unidad: insumo.unidad });
-                            }
+                            if (itemEnStock) { itemEnStock.cantidad -= insumo.cantidadTotal; } 
+                            else { alertasStock.push({ nombre: insumo.ingrediente, faltante: insumo.cantidadTotal, unidad: insumo.unidad }); }
                         });
                     }
                 });
 
-                // Revisamos si alguno de los ingredientes quedó en negativo después de restarle los eventos
                 stockProyectado.forEach(p => {
-                    if (p.cantidad <= 0) { // Ponemos <= 0 para que avise incluso si nos quedamos exactamente en cero.
-                        // Usamos Math.abs para mostrar el número en positivo (ej: "Faltan 2 botellas" en vez de "Faltan -2 botellas")
-                        alertasStock.push({ nombre: p.nombre, faltante: Math.abs(p.cantidad) === 0 ? 0 : Math.abs(p.cantidad), unidad: p.unidad_medida, stock_cero: p.cantidad === 0 });
-                    }
+                    if (p.cantidad <= 0) { alertasStock.push({ nombre: p.nombre, faltante: Math.abs(p.cantidad) === 0 ? 0 : Math.abs(p.cantidad), unidad: p.unidad_medida, stock_cero: p.cantidad === 0 }); }
                 });
 
-                // 5. Renderizar Alertas
                 const listaAl = document.getElementById('dash-alertas');
                 if(alertasStock.length === 0) {
                     listaAl.innerHTML = '<div style="text-align:center; padding: 30px; color:#27ae60;"><i class="ti ti-circle-check" style="font-size:3em;"></i><br><strong style="font-size:1.2em;">Todo en orden</strong><br>Tenés stock suficiente en el inventario para cubrir los próximos eventos.</div>';
@@ -319,19 +273,44 @@
                         </li>
                     `).join('');
                 }
-
             } catch (e) { console.error("Error cargando Dashboard:", e); }
         }
 
-        // --- INVENTARIO, RECETAS Y DEMÁS FUNCIONES ORIGINALES (SIN CAMBIOS) ---
-        
+        // --- INVENTARIO (CON CÓDIGO DE BARRAS) ---
         function filtrarInventario() { const categoriaElegida = document.getElementById('filtro-inventario').value; document.querySelectorAll('#lista-categorias li:not(.encabezado-tabla)').forEach(li => { const categoriaItem = li.getAttribute('data-categoria'); li.style.display = (categoriaElegida === '' || categoriaItem === categoriaElegida) ? 'flex' : 'none'; }); }
 
         async function cargarSelectCategorias() { try { const res = await fetch('/api/categorias', { headers: getHeaders(false) }); const categorias = await res.json(); const selectFiltro = document.getElementById('filtro-inventario'); selectFiltro.innerHTML = '<option value="">Todas las categorías</option>'; categorias.forEach(c => { selectFiltro.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; }); } catch (e) { console.error(e); } }
 
         async function abrirModalCrearProducto() {
             const opcionesCategoria = Array.from(document.getElementById('filtro-inventario').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
-            const { value: formValues } = await Swal.fire({ title: '<i class="ti ti-plus"></i> Nuevo Producto', html: `<div style="text-align: left; margin-top: 10px; font-size: 0.9em;"><label style="font-weight: bold;">Nombre</label><input id="swal-crear-nombre" class="swal2-input" placeholder="Ej. Limón, Gin" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><label style="font-weight: bold;">Categoría</label><select id="swal-crear-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="">Seleccionar categoría...</option>${opcionesCategoria}</select><div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-weight: bold;">Formato (Cant)</label><input id="swal-crear-cantidad" type="number" class="swal2-input" placeholder="Ej. 1" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div><div style="flex: 1;"><label style="font-weight: bold;">Unidad</label><select id="swal-crear-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros">Litros (L)</option><option value="ml">Mililitros (ml)</option><option value="Kg">Kilogramos (Kg)</option><option value="Gramos">Gramos (g)</option><option value="Unidades">Unidades (u)</option></select></div></div><label style="font-weight: bold;">Costo Total ($)</label><input id="swal-crear-precio" type="number" class="swal2-input" placeholder="Precio final" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;"></div>`, showCancelButton: true, confirmButtonColor: '#2ecc71', cancelButtonColor: '#95a5a6', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Producto', focusConfirm: false, preConfirm: () => { const nombre = document.getElementById('swal-crear-nombre').value, tipo = document.getElementById('swal-crear-tipo').value, cantidad = parseFloat(document.getElementById('swal-crear-cantidad').value), unidad_medida = document.getElementById('swal-crear-unidad').value, precio = parseFloat(document.getElementById('swal-crear-precio').value); if (!nombre || !tipo || isNaN(cantidad) || isNaN(precio)) { Swal.showValidationMessage('Completá todos los campos para continuar'); return false; } return { nombre, tipo, cantidad, unidad_medida, precio }; } });
+            const { value: formValues } = await Swal.fire({ 
+                title: '<i class="ti ti-plus"></i> Nuevo Producto', 
+                html: `
+                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
+                        <label style="font-weight: bold;">Código de Barras / QR (Opcional)</label>
+                        <input id="swal-crear-codigo" class="swal2-input" placeholder="Clickeá y escaneá con pistola o cámara" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
+                        
+                        <label style="font-weight: bold;">Nombre</label>
+                        <input id="swal-crear-nombre" class="swal2-input" placeholder="Ej. Limón, Gin" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
+                        
+                        <label style="font-weight: bold;">Categoría</label>
+                        <select id="swal-crear-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="">Seleccionar categoría...</option>${opcionesCategoria}</select>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <div style="flex: 1;"><label style="font-weight: bold;">Formato (Cant)</label><input id="swal-crear-cantidad" type="number" class="swal2-input" placeholder="Ej. 1" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
+                            <div style="flex: 1;"><label style="font-weight: bold;">Unidad</label><select id="swal-crear-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros">Litros (L)</option><option value="ml">Mililitros (ml)</option><option value="Kg">Kilogramos (Kg)</option><option value="Gramos">Gramos (g)</option><option value="Unidades">Unidades (u)</option></select></div>
+                        </div>
+                        <label style="font-weight: bold;">Costo Total ($)</label>
+                        <input id="swal-crear-precio" type="number" class="swal2-input" placeholder="Precio final" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
+                    </div>
+                `, 
+                showCancelButton: true, confirmButtonColor: '#2ecc71', cancelButtonColor: '#95a5a6', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Producto', focusConfirm: false, 
+                preConfirm: () => { 
+                    const nombre = document.getElementById('swal-crear-nombre').value, tipo = document.getElementById('swal-crear-tipo').value, cantidad = parseFloat(document.getElementById('swal-crear-cantidad').value), unidad_medida = document.getElementById('swal-crear-unidad').value, precio = parseFloat(document.getElementById('swal-crear-precio').value), codigo_barras = document.getElementById('swal-crear-codigo').value; 
+                    if (!nombre || !tipo || isNaN(cantidad) || isNaN(precio)) { Swal.showValidationMessage('Completá todos los campos obligatorios para continuar'); return false; } 
+                    return { nombre, tipo, cantidad, unidad_medida, precio, codigo_barras }; 
+                } 
+            });
             if (formValues) { try { if ((await fetch('/api/productos', { method: 'POST', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarCategorias(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Producto guardado' }); } } catch (e) { console.error(e); } }
         }
 
@@ -350,15 +329,16 @@
                     </li>`;
                 selIng.innerHTML = '<option value="">Seleccionar ingrediente...</option>'; 
                 datos.forEach(p => {
+                    let iconoCodigo = p.codigo_barras ? '<i class="ti ti-barcode" title="Con Código de Barras" style="color: #3498db;"></i> ' : '';
                     lista.innerHTML += `
                     <li class="fila-inventario" data-categoria="${p.tipo}" style="border-left: 5px solid #3498db;">
-                        <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">${p.nombre}</strong></div>
+                        <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">${iconoCodigo}${p.nombre}</strong></div>
                         <div style="flex: 1; min-width: 120px; color: #666; font-size: 0.9em;"><i class="ti ti-folder"></i> ${p.tipo}</div>
                         <div style="flex: 1; min-width: 120px; color: #888; font-size: 0.9em;"><i class="ti ti-package"></i> ${p.cantidad} ${p.unidad_medida}</div>
                         <div style="flex: 1; min-width: 100px; color: #27ae60; font-weight: bold; font-size: 1em;">$${formatoMoneda(p.precio)}</div>
                         <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
-                            <button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="prepararEdicion(${p.id}, '${p.nombre}', '${p.tipo}', ${p.precio}, ${p.cantidad}, '${p.unidad_medida}')" title="Ver / Editar"><i class="ti ti-eye"></i></button>
-                            <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarProducto(${p.id}, '${p.nombre}')" title="Eliminar"><i class="ti ti-x"></i></button>
+                            <button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="prepararEdicion(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', '${p.tipo}', ${p.precio}, ${p.cantidad}, '${p.unidad_medida}', '${p.codigo_barras || ''}')" title="Ver / Editar"><i class="ti ti-eye"></i></button>
+                            <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarProducto(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="ti ti-x"></i></button>
                         </div>
                     </li>`;
                     selIng.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-formato="${p.cantidad}">${p.nombre} (en ${p.unidad_medida})</option>`;
@@ -366,9 +346,42 @@
             } catch (e) { console.error(e); }
         }
 
-        async function prepararEdicion(id, nom, tipo, pre, cant, uni) {
+        async function prepararEdicion(id, nom, tipo, pre, cant, uni, cod) {
             const opcionesCategoria = Array.from(document.getElementById('filtro-inventario').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}" ${opt.value === tipo ? 'selected' : ''}>${opt.text}</option>`).join('');
-            const { value: formValues } = await Swal.fire({ title: '<i class="ti ti-eye"></i> Editar Producto', html: `<div style="text-align: left; margin-top: 10px; font-size: 0.9em;"><label style="font-weight: bold;">Nombre</label><input id="swal-edit-nombre" class="swal2-input" value="${nom}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><label style="font-weight: bold;">Categoría</label><select id="swal-edit-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">${opcionesCategoria}</select><div style="display: flex; gap: 10px;"><div style="flex: 1;"><label style="font-weight: bold;">Formato (Cant)</label><input id="swal-edit-cantidad" type="number" class="swal2-input" value="${cant}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div><div style="flex: 1;"><label style="font-weight: bold;">Unidad</label><select id="swal-edit-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros" ${uni==='Litros'?'selected':''}>Litros (L)</option><option value="ml" ${uni==='ml'?'selected':''}>Mililitros (ml)</option><option value="Kg" ${uni==='Kg'?'selected':''}>Kilogramos (Kg)</option><option value="Gramos" ${uni==='Gramos'?'selected':''}>Gramos (g)</option><option value="Unidades" ${uni==='Unidades'?'selected':''}>Unidades (u)</option></select></div></div><label style="font-weight: bold;">Costo Total ($)</label><input id="swal-edit-precio" type="number" class="swal2-input" value="${pre}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;"></div>`, showCancelButton: true, confirmButtonColor: '#3498db', cancelButtonColor: '#e74c3c', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Cambios', focusConfirm: false, preConfirm: () => { return { nombre: document.getElementById('swal-edit-nombre').value, tipo: document.getElementById('swal-edit-tipo').value, cantidad: parseFloat(document.getElementById('swal-edit-cantidad').value), unidad_medida: document.getElementById('swal-edit-unidad').value, precio: parseFloat(document.getElementById('swal-edit-precio').value) } } });
+            const valorCodigo = (cod === 'null' || cod === 'undefined' || !cod) ? '' : cod;
+            const { value: formValues } = await Swal.fire({ 
+                title: '<i class="ti ti-eye"></i> Editar Producto', 
+                html: `
+                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
+                        <label style="font-weight: bold;">Código de Barras / QR</label>
+                        <input id="swal-edit-codigo" class="swal2-input" value="${valorCodigo}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
+                        
+                        <label style="font-weight: bold;">Nombre</label>
+                        <input id="swal-edit-nombre" class="swal2-input" value="${nom}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
+                        
+                        <label style="font-weight: bold;">Categoría</label>
+                        <select id="swal-edit-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">${opcionesCategoria}</select>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <div style="flex: 1;"><label style="font-weight: bold;">Formato (Cant)</label><input id="swal-edit-cantidad" type="number" class="swal2-input" value="${cant}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
+                            <div style="flex: 1;"><label style="font-weight: bold;">Unidad</label><select id="swal-edit-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros" ${uni==='Litros'?'selected':''}>Litros (L)</option><option value="ml" ${uni==='ml'?'selected':''}>Mililitros (ml)</option><option value="Kg" ${uni==='Kg'?'selected':''}>Kilogramos (Kg)</option><option value="Gramos" ${uni==='Gramos'?'selected':''}>Gramos (g)</option><option value="Unidades" ${uni==='Unidades'?'selected':''}>Unidades (u)</option></select></div>
+                        </div>
+                        <label style="font-weight: bold;">Costo Total ($)</label>
+                        <input id="swal-edit-precio" type="number" class="swal2-input" value="${pre}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
+                    </div>
+                `, 
+                showCancelButton: true, confirmButtonColor: '#3498db', cancelButtonColor: '#e74c3c', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Cambios', focusConfirm: false, 
+                preConfirm: () => { 
+                    return { 
+                        nombre: document.getElementById('swal-edit-nombre').value, 
+                        tipo: document.getElementById('swal-edit-tipo').value, 
+                        cantidad: parseFloat(document.getElementById('swal-edit-cantidad').value), 
+                        unidad_medida: document.getElementById('swal-edit-unidad').value, 
+                        precio: parseFloat(document.getElementById('swal-edit-precio').value),
+                        codigo_barras: document.getElementById('swal-edit-codigo').value 
+                    } 
+                } 
+            });
             if (formValues) { if ((await fetch(`/api/productos/${id}`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarCategorias(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Actualizado' }); } }
         }
 
@@ -385,7 +398,6 @@
             const { value: formValues } = await Swal.fire({ title: id ? '<i class="ti ti-eye"></i> Ver / Editar Receta' : '<i class="ti ti-blender"></i> Nueva Receta', width: '700px', html: `<div style="text-align: left; font-size: 0.9em;"><label style="font-weight: bold;">Nombre del Trago</label><input id="swal-receta-nombre" class="swal2-input" value="${receta ? receta.nombre : ''}" placeholder="Ej. Mojito" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;"><div style="flex: 2; min-width: 150px;"><label style="font-weight: bold;">Ingrediente</label><select id="swal-receta-ingrediente" class="swal2-input" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;"><option value="">Seleccionar...</option>${opcionesIngredientes}</select></div><div style="flex: 1; min-width: 100px;"><label style="font-weight: bold;">Cant.</label><input id="swal-receta-cantidad" type="number" class="swal2-input" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;"></div><button class="btn-accion" style="background-color: #34495e; padding: 12px 15px; margin-top: 5px;" onclick="agregarIngredienteSwal(event)"><i class="ti ti-plus"></i> Añadir</button></div><h4 style="margin: 15px 0 5px 0;">En la coctelera:</h4><ul id="swal-lista-mezcla" class="lista-mezcla" style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; padding: 5px;"></ul><div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-top: 15px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; border: 1px solid #bce8f1;"><div><span style="color: #555; font-size: 0.85em;">Costo Insumos:</span><br><strong style="font-size: 1.2em; color: #2980b9;">$<span id="swal-costo-vivo">0,00</span></strong></div><div><span style="color: #555; font-size: 0.85em;">Margen Ganancia (%):</span><br><input type="number" id="swal-margen" value="100" style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold;" oninput="actualizarPrecioSwal()"></div><div style="text-align: right;"><span style="color: #555; font-size: 0.85em;">Precio Venta:</span><br><div style="display: flex; align-items: center; gap: 5px;"><strong style="font-size: 1.2em; color: #27ae60;">$</strong><input type="number" id="swal-precio-venta" value="${receta ? receta.precio_venta : ''}" style="width: 90px; padding: 5px; font-weight: bold; color: #27ae60; border: 2px solid #2ecc71; border-radius: 4px; font-size: 1em;"></div></div></div></div>`, showCancelButton: true, confirmButtonColor: '#3498db', cancelButtonColor: '#e74c3c', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Cambios', focusConfirm: false, didOpen: () => { renderizarMezclaSwal(); }, preConfirm: () => { const n = document.getElementById('swal-receta-nombre').value; const p = document.getElementById('swal-precio-venta').value; if (!n || !mezclaActual.length) { Swal.showValidationMessage('Completá el nombre y agregá ingredientes.'); return false; } return { nombre: n, precio_venta: p, ingredientes: mezclaActual }; } });
             if (formValues) { const url = recetaEditandoId ? `/api/productos/recetas/${recetaEditandoId}` : '/api/productos/recetas'; const metodo = recetaEditandoId ? 'PUT' : 'POST'; if ((await fetch(url, { method: metodo, headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { Swal.fire('¡Excelente!', recetaEditandoId ? 'Receta actualizada.' : 'Receta guardada.', 'success'); carTra(); carRec(); } }
         }
-
         function agregarIngredienteSwal(e) { if(e) e.preventDefault(); const s = document.getElementById('swal-receta-ingrediente'); const c = parseFloat(document.getElementById('swal-receta-cantidad').value); if (!s.value || isNaN(c) || c <= 0) return; const opt = s.options[s.selectedIndex]; const precio = parseFloat(opt.getAttribute('data-precio')), formato = parseFloat(opt.getAttribute('data-formato')); const costoParcial = (precio / formato) * c; mezclaActual.push({ ingrediente_id: s.value, nombre: opt.text.split(' (')[0], cantidad: c, unidad: opt.text.split(' (en ')[1].replace(')',''), costo_parcial: costoParcial }); document.getElementById('swal-receta-cantidad').value = ''; s.value = ''; renderizarMezclaSwal(); }
         function renderizarMezclaSwal() { const lista = document.getElementById('swal-lista-mezcla'); if(!lista) return; lista.innerHTML = mezclaActual.map((i, idx) => `<li style="background: white; margin-bottom: 5px; padding: 5px 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd;">${i.cantidad} ${i.unidad} de ${i.nombre} <button class="btn-danger-small" style="padding: 2px 6px;" onclick="eliminarIngredienteSwal(event, ${idx})"><i class="ti ti-x"></i></button></li>`).join(''); costoActualReceta = mezclaActual.reduce((acc, curr) => acc + curr.costo_parcial, 0); document.getElementById('swal-costo-vivo').innerText = formatoMoneda(costoActualReceta); actualizarPrecioSwal(); }
         function eliminarIngredienteSwal(e, idx) { if(e) e.preventDefault(); mezclaActual.splice(idx, 1); renderizarMezclaSwal(); }
@@ -404,7 +416,7 @@
                     <div style="flex: 1; min-width: 100px; color: #27ae60; font-weight: bold; font-size: 1em;">$${formatoMoneda(r.ganancia)}</div>
                     <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
                         <button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="abrirModalReceta(${r.id})" title="Ver / Editar"><i class="ti ti-eye"></i></button>
-                        <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarRecetaConfirm(${r.id}, '${r.nombre}')" title="Eliminar"><i class="ti ti-x"></i></button>
+                        <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarRecetaConfirm(${r.id}, '${r.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="ti ti-x"></i></button>
                     </div>
                     <div style="width: 100%; font-size: 0.85em; color: #7f8c8d; margin-top: 8px;"><i class="ti ti-blender"></i> ${ingredientesStr}</div>
                 </li>`;
@@ -426,8 +438,6 @@
             if (res.ok) {
                 const data = await res.json(); document.getElementById('resultado-evento').style.display = 'block';
                 costoNetoEventoActual = parseFloat(data.costoTotalEvento);
-                
-                // GUARDAMOS LA LISTA DE COMPRAS PARA ENVIARLA A LA AGENDA Y HACER PROYECCIÓN
                 comprasEventoActual = data.listaCompras; 
 
                 document.getElementById('detalle-logistica').innerHTML = `
@@ -467,7 +477,7 @@
                             <div style="flex: 3; min-width: 250px; color: #666; font-size: 0.9em;"><i class="ti ti-glass-full"></i> ${resumen}</div>
                             <div style="display: flex; gap: 10px; justify-content: flex-end; flex: 1;">
                                 <button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="abrirModalPlantilla(${p.id})" title="Ver / Editar"><i class="ti ti-eye"></i></button>
-                                <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarPlantilla(${p.id}, '${p.nombre}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+                                <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarPlantilla(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="ti ti-trash"></i></button>
                                 <button class="btn-accion" style="background-color: #3498db; padding: 6px 12px; font-size: 0.9em; box-shadow: none;" onclick="cargarPlantillaEnCotizador(${p.id})"><i class="ti ti-download"></i> Usar</button>
                             </div>
                         </li>`;
@@ -494,13 +504,12 @@
         async function agendarDesdeCotizador(costoTotalCobrar) {
             const { value: formValues } = await Swal.fire({ title: 'Agendar este Evento', html: '<input id="swal-cliente" class="swal2-input" placeholder="Nombre del Cliente"><input type="date" id="swal-fecha" class="swal2-input">', focusConfirm: false, showCancelButton: true, confirmButtonText: 'Agendar', preConfirm: () => { return [document.getElementById('swal-cliente').value, document.getElementById('swal-fecha').value] } });
             if (formValues && formValues[0] && formValues[1]) { 
-                // AHORA MANDAMOS LA VARIABLE "insumos: comprasEventoActual" AL BACKEND
                 await fetch('/api/agenda', { 
                     method: 'POST', headers: getHeaders(), 
                     body: JSON.stringify({ cliente: formValues[0], fecha: formValues[1], cotizacion_total: costoTotalCobrar, detalles: 'Cotización generada automáticamente desde planificador.', insumos: comprasEventoActual }) 
                 }); 
                 Swal.fire('¡Agendado!', 'El evento ya figura en tu Agenda y se contempló en el Análisis de Stock.', 'success'); 
-                carAge(); cargarDashboard(); // Recargamos el dashboard para que impacte el nuevo evento
+                carAge(); cargarDashboard();
             }
         }
         
