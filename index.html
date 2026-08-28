@@ -115,11 +115,19 @@
                 <h2 style="margin: 0;">Control de Depósito y Proveedores</h2>
             </div>
 
-            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                <strong style="white-space: nowrap;"><i class="ti ti-filter"></i> Filtrar por Categoría:</strong>
-                <select id="filtro-stock" onchange="filtrarVista('stock')" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 1.1em;">
-                    <option value="">Todas las categorías</option>
-                </select>
+            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex-wrap: wrap;">
+                <div style="flex: 1; display: flex; align-items: center; gap: 10px; min-width: 200px;">
+                    <strong style="white-space: nowrap;"><i class="ti ti-filter"></i> Categoría:</strong>
+                    <select id="filtro-stock-categoria" onchange="filtrarVistaStock()" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 1.1em;">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div style="flex: 1; display: flex; align-items: center; gap: 10px; min-width: 200px;">
+                    <strong style="white-space: nowrap; color: #8e44ad;"><i class="ti ti-truck"></i> Proveedor:</strong>
+                    <select id="filtro-stock-proveedor" onchange="filtrarVistaStock()" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #8e44ad; font-size: 1.1em;">
+                        <option value="">Todos los proveedores</option>
+                    </select>
+                </div>
             </div>
             
             <ul id="lista-stock" class="grid-productos" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"></ul>
@@ -232,7 +240,7 @@
         function toggleFormulario(id) { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 
         // --- VARIABLES GLOBALES ---
-        let inventarioGlobal = []; // Guarda todos los datos (Catalogo y Stock)
+        let inventarioGlobal = []; 
         let mezclaActual = []; let tragosEventoActual = []; let plantillasGuardadas = [];
         let costoActualReceta = 0; let costoNetoEventoActual = 0; let totalCobrarEventoActual = 0;
         let recetaEditandoId = null; let recetasGuardadasData = []; let tragosPlantillaActual = [];
@@ -245,33 +253,34 @@
             return headers;
         }
 
-        // --- CARGA CENTRALIZADA DEL INVENTARIO ---
+        // --- CARGA CENTRALIZADA ---
         async function cargarDatosInventario() {
             try {
                 const res = await fetch('/api/productos', { headers: getHeaders(false) }); 
                 inventarioGlobal = await res.json(); 
                 
-                // Actualizamos los selects de filtros
                 const resCat = await fetch('/api/categorias', { headers: getHeaders(false) }); 
                 const categorias = await resCat.json(); 
                 
                 const selCat = document.getElementById('filtro-catalogo');
-                const selStock = document.getElementById('filtro-stock');
+                const selStockCat = document.getElementById('filtro-stock-categoria');
                 selCat.innerHTML = '<option value="">Todas las categorías</option>'; 
-                selStock.innerHTML = '<option value="">Todas las categorías</option>'; 
+                selStockCat.innerHTML = '<option value="">Todas las categorías</option>'; 
                 categorias.forEach(c => { 
                     selCat.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; 
-                    selStock.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; 
+                    selStockCat.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; 
                 });
 
-                // Actualizamos el select de ingredientes para las recetas
+                const selStockProv = document.getElementById('filtro-stock-proveedor');
+                selStockProv.innerHTML = '<option value="">Todos los Proveedores</option>';
+                const proveedoresUnicos = [...new Set(inventarioGlobal.map(p => p.proveedor).filter(p => p && p.trim() !== ''))];
+                proveedoresUnicos.forEach(prov => { selStockProv.innerHTML += `<option value="${prov}">${prov}</option>`; });
+
                 const selIng = document.getElementById('select-ingredientes');
                 selIng.innerHTML = '<option value="">Seleccionar ingrediente...</option>'; 
                 inventarioGlobal.forEach(p => { selIng.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-formato="${p.cantidad}">${p.nombre} (en ${p.unidad_medida})</option>`; });
 
-                renderizarCatalogo();
-                renderizarStock();
-                cargarDashboard(); // Se actualiza por si cambió el stock
+                renderizarCatalogo(); renderizarStock(); cargarDashboard(); 
             } catch (e) { console.error(e); }
         }
 
@@ -282,19 +291,31 @@
             });
         }
 
-        // --- RENDERIZAR CATÁLOGO (Solo datos para recetas) ---
+        function filtrarVistaStock() {
+            const catElegida = document.getElementById('filtro-stock-categoria').value;
+            const provElegido = document.getElementById('filtro-stock-proveedor').value;
+            
+            document.querySelectorAll('#lista-stock li:not(.encabezado-tabla)').forEach(li => {
+                const matchCat = catElegida === '' || li.getAttribute('data-categoria') === catElegida;
+                const matchProv = provElegido === '' || li.getAttribute('data-proveedor') === provElegido;
+                li.style.display = (matchCat && matchProv) ? 'flex' : 'none';
+            });
+        }
+
+        // --- RENDERIZAR CATÁLOGO ---
         function renderizarCatalogo() {
             const lista = document.getElementById('lista-catalogo');
             lista.innerHTML = `
                 <li class="encabezado-tabla">
                     <div style="flex: 2; min-width: 180px;">Insumo / Producto</div><div style="flex: 1; min-width: 120px;">Categoría</div>
-                    <div style="flex: 1; min-width: 120px;">Formato Físico</div><div style="flex: 1; min-width: 100px;">Costo</div><div style="flex: 0.5; text-align: right;">Acciones</div>
+                    <div style="flex: 1; min-width: 120px;">Formato de Uso</div><div style="flex: 1; min-width: 100px;">Costo Base</div><div style="flex: 0.5; text-align: right;">Acciones</div>
                 </li>`;
             inventarioGlobal.forEach(p => {
+                let badgeGranel = p.a_granel ? `<span style="background:#f39c12; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left: 5px;"><i class="ti ti-package"></i> A Granel</span>` : '';
                 let iconoCodigo = p.codigo_barras ? '<i class="ti ti-barcode" title="Con Código de Barras" style="color: #3498db;"></i> ' : '';
                 lista.innerHTML += `
                 <li class="fila-inventario" data-categoria="${p.tipo}" style="border-left: 5px solid #3498db;">
-                    <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">${iconoCodigo}${p.nombre}</strong></div>
+                    <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">${iconoCodigo}${p.nombre}</strong> ${badgeGranel}</div>
                     <div style="flex: 1; min-width: 120px; color: #666; font-size: 0.9em;"><i class="ti ti-folder"></i> ${p.tipo}</div>
                     <div style="flex: 1; min-width: 120px; color: #888; font-size: 0.9em;"><i class="ti ti-ruler-measure"></i> ${p.cantidad} ${p.unidad_medida}</div>
                     <div style="flex: 1; min-width: 100px; color: #27ae60; font-weight: bold; font-size: 1em;">$${formatoMoneda(p.precio)}</div>
@@ -306,7 +327,7 @@
             });
         }
 
-        // --- RENDERIZAR DEPÓSITO / STOCK (Solo datos de stock y proveedor) ---
+        // --- RENDERIZAR DEPÓSITO / STOCK ---
         function renderizarStock() {
             const lista = document.getElementById('lista-stock');
             lista.innerHTML = `
@@ -317,10 +338,11 @@
             inventarioGlobal.forEach(p => {
                 let badgeStock = p.stock <= 0 ? `<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em;">Sin Stock</span>` : `${p.stock} Uds.`;
                 let badgeProv = p.proveedor ? `<i class="ti ti-truck"></i> ${p.proveedor}` : `<i class="ti ti-truck-off" style="opacity:0.5;"></i> S/D`;
+                let badgeGranel = p.a_granel ? `<span style="background:#f39c12; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left: 5px;"><i class="ti ti-package"></i> A Granel</span>` : '';
                 
                 lista.innerHTML += `
-                <li class="fila-inventario" data-categoria="${p.tipo}" style="border-left: 5px solid ${p.stock <= 0 ? '#e74c3c' : '#27ae60'};">
-                    <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">${p.nombre}</strong><div style="font-size: 0.8em; color: #888;">Envase: ${p.cantidad} ${p.unidad_medida}</div></div>
+                <li class="fila-inventario" data-categoria="${p.tipo}" data-proveedor="${p.proveedor || ''}" style="border-left: 5px solid ${p.stock <= 0 ? '#e74c3c' : '#27ae60'};">
+                    <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">${p.nombre}</strong> ${badgeGranel}<div style="font-size: 0.8em; color: #888;">Envase: ${p.cantidad} ${p.unidad_medida}</div></div>
                     <div style="flex: 1.5; min-width: 150px; color: #666; font-size: 0.9em;">${badgeProv}</div>
                     <div style="flex: 1; min-width: 120px; font-weight: bold; font-size: 1.1em; color: ${p.stock <= 0 ? '#e74c3c' : '#27ae60'};">${badgeStock}</div>
                     <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
@@ -331,6 +353,46 @@
         }
 
         // --- FUNCIONES DE EDICIÓN DIVIDIDAS ---
+        async function abrirModalCrearProducto() {
+            const opcionesCategoria = Array.from(document.getElementById('filtro-catalogo').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
+            const { value: formValues } = await Swal.fire({ 
+                title: '<i class="ti ti-plus"></i> Nuevo Insumo', 
+                html: `
+                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
+                        <label style="font-weight: bold;">Código de Barras / QR</label>
+                        <input id="swal-crear-codigo" class="swal2-input" placeholder="Clickeá y escaneá con pistola o cámara" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
+                        
+                        <label style="font-weight: bold;">Nombre (Ej: Jugo Cepita naranja 1L)</label>
+                        <input id="swal-crear-nombre" class="swal2-input" placeholder="Nombre completo" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
+                        
+                        <label style="font-weight: bold;">Categoría</label>
+                        <select id="swal-crear-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="">Seleccionar categoría...</option>${opcionesCategoria}</select>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #fff3cd; padding: 10px; border-radius: 4px; border: 1px solid #ffeeba;">
+                                <input type="checkbox" id="swal-crear-granel" style="width: 20px; height: 20px;">
+                                <strong style="color: #856404;">Es un insumo a Granel (Bolsas, Bidones, Cajas grandes)</strong>
+                            </label>
+                        </div>
+
+                        <div style="display: flex; gap: 10px;">
+                            <div style="flex: 1;"><label style="font-weight: bold;">Formato de Uso</label><input id="swal-crear-cantidad" type="number" class="swal2-input" placeholder="Ej. 1000" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
+                            <div style="flex: 1;"><label style="font-weight: bold;">Unidad de medida</label><select id="swal-crear-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros">Litros (L)</option><option value="ml">Mililitros (ml)</option><option value="Kg">Kilogramos (Kg)</option><option value="Gramos">Gramos (g)</option><option value="Unidades">Unidades (u)</option></select></div>
+                        </div>
+                        <label style="font-weight: bold;">Costo Base ($)</label>
+                        <input id="swal-crear-precio" type="number" class="swal2-input" placeholder="Ej. 1855" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
+                    </div>
+                `, 
+                showCancelButton: true, confirmButtonColor: '#2ecc71', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar en Catálogo', focusConfirm: false, 
+                preConfirm: () => { 
+                    const n = document.getElementById('swal-crear-nombre').value, t = document.getElementById('swal-crear-tipo').value, c = parseFloat(document.getElementById('swal-crear-cantidad').value), u = document.getElementById('swal-crear-unidad').value, p = parseFloat(document.getElementById('swal-crear-precio').value); 
+                    if (!n || !t || isNaN(c) || isNaN(p)) { Swal.showValidationMessage('Completá los campos obligatorios'); return false; } 
+                    return { nombre: n, tipo: t, cantidad: c, unidad_medida: u, precio: p, codigo_barras: document.getElementById('swal-crear-codigo').value, a_granel: document.getElementById('swal-crear-granel').checked, stock: 0, proveedor: '' }; 
+                } 
+            });
+            if (formValues) { try { if ((await fetch('/api/productos', { method: 'POST', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarDatosInventario(); Toast.fire({ icon: 'success', title: 'Producto guardado' }); } } catch (e) { console.error(e); } }
+        }
+
         async function editarCatalogo(id) {
             const p = inventarioGlobal.find(x => x.id === id);
             const opcionesCategoria = Array.from(document.getElementById('filtro-catalogo').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}" ${opt.value === p.tipo ? 'selected' : ''}>${opt.text}</option>`).join('');
@@ -345,19 +407,27 @@
                         <input id="swal-edit-nombre" class="swal2-input" value="${p.nombre}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
                         <label style="font-weight: bold;">Categoría</label>
                         <select id="swal-edit-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">${opcionesCategoria}</select>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #fff3cd; padding: 10px; border-radius: 4px; border: 1px solid #ffeeba;">
+                                <input type="checkbox" id="swal-edit-granel" style="width: 20px; height: 20px;" ${p.a_granel ? 'checked' : ''}>
+                                <strong style="color: #856404;">Es un insumo a Granel (Bolsas, Bidones, Cajas grandes)</strong>
+                            </label>
+                        </div>
+
                         <div style="display: flex; gap: 10px;">
-                            <div style="flex: 1;"><label style="font-weight: bold;">Formato</label><input id="swal-edit-cantidad" type="number" class="swal2-input" value="${p.cantidad}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
+                            <div style="flex: 1;"><label style="font-weight: bold;">Formato de Uso</label><input id="swal-edit-cantidad" type="number" class="swal2-input" value="${p.cantidad}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
                             <div style="flex: 1;"><label style="font-weight: bold;">Unidad</label><select id="swal-edit-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros" ${p.unidad_medida==='Litros'?'selected':''}>Litros (L)</option><option value="ml" ${p.unidad_medida==='ml'?'selected':''}>Mililitros (ml)</option><option value="Kg" ${p.unidad_medida==='Kg'?'selected':''}>Kilogramos (Kg)</option><option value="Gramos" ${p.unidad_medida==='Gramos'?'selected':''}>Gramos (g)</option><option value="Unidades" ${p.unidad_medida==='Unidades'?'selected':''}>Unidades (u)</option></select></div>
                         </div>
                         <label style="font-weight: bold;">Costo Unitario ($)</label>
                         <input id="swal-edit-precio" type="number" class="swal2-input" value="${p.precio}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
                     </div>
                 `, 
-                showCancelButton: true, confirmButtonColor: '#3498db', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar', focusConfirm: false, 
+                showCancelButton: true, confirmButtonColor: '#3498db', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Cambios', focusConfirm: false, 
                 preConfirm: () => { 
                     return { 
-                        nombre: document.getElementById('swal-edit-nombre').value, tipo: document.getElementById('swal-edit-tipo').value, cantidad: parseFloat(document.getElementById('swal-edit-cantidad').value), unidad_medida: document.getElementById('swal-edit-unidad').value, precio: parseFloat(document.getElementById('swal-edit-precio').value), codigo_barras: document.getElementById('swal-edit-codigo').value, 
-                        stock: p.stock, proveedor: p.proveedor // Conservamos lo que no tocamos
+                        nombre: document.getElementById('swal-edit-nombre').value, tipo: document.getElementById('swal-edit-tipo').value, cantidad: parseFloat(document.getElementById('swal-edit-cantidad').value), unidad_medida: document.getElementById('swal-edit-unidad').value, precio: parseFloat(document.getElementById('swal-edit-precio').value), codigo_barras: document.getElementById('swal-edit-codigo').value, a_granel: document.getElementById('swal-edit-granel').checked,
+                        stock: p.stock, proveedor: p.proveedor // Conservamos el stock oculto para que no se pierda
                     } 
                 } 
             });
@@ -366,16 +436,17 @@
 
         async function editarStock(id) {
             const p = inventarioGlobal.find(x => x.id === id);
+            const badgeGranel = p.a_granel ? ` <span style="background:#f39c12; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left: 5px;">A Granel</span>` : '';
             const { value: formValues } = await Swal.fire({ 
                 title: '<i class="ti ti-building-warehouse"></i> Actualizar Stock', 
                 html: `
                     <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
                         <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ddd;">
-                            <strong>Insumo:</strong> ${p.nombre}<br><strong>Envase:</strong> ${p.cantidad} ${p.unidad_medida}
+                            <strong>Insumo:</strong> ${p.nombre} ${badgeGranel}<br><strong>Envase Unitario:</strong> ${p.cantidad} ${p.unidad_medida}
                         </div>
                         <label style="font-weight: bold;">Proveedor / Distribuidora</label>
                         <input id="swal-edit-proveedor" class="swal2-input" value="${p.proveedor || ''}" placeholder="Ej. Mayorista El Sol" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #8e44ad;">
-                        <label style="font-weight: bold;">Cantidad Física en Depósito (Botellas/Cajas)</label>
+                        <label style="font-weight: bold;">Cantidad Física Total en Depósito</label>
                         <input id="swal-edit-stock" type="number" class="swal2-input" value="${p.stock || 0}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box; border-left: 4px solid #27ae60;">
                     </div>
                 `, 
@@ -383,7 +454,7 @@
                 preConfirm: () => { 
                     return { 
                         stock: parseFloat(document.getElementById('swal-edit-stock').value), proveedor: document.getElementById('swal-edit-proveedor').value,
-                        nombre: p.nombre, tipo: p.tipo, cantidad: p.cantidad, unidad_medida: p.unidad_medida, precio: p.precio, codigo_barras: p.codigo_barras // Conservamos el resto
+                        nombre: p.nombre, tipo: p.tipo, cantidad: p.cantidad, unidad_medida: p.unidad_medida, precio: p.precio, codigo_barras: p.codigo_barras, a_granel: p.a_granel // Conservamos el resto
                     } 
                 } 
             });
@@ -393,36 +464,6 @@
         async function borrarProducto(id, nombre) {
             if (!(await Swal.fire({ title: `¿Borrar "${nombre}" del sistema?`, text: 'Se eliminará del catálogo y del stock', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Sí, borrar' })).isConfirmed) return;
             if ((await fetch(`/api/productos/${id}`, { method: 'DELETE', headers: getHeaders(false) })).ok) { cargarDatosInventario(); Toast.fire({ icon: 'success', title: 'Eliminado' }); }
-        }
-
-        async function abrirModalCrearProducto() {
-            const opcionesCategoria = Array.from(document.getElementById('filtro-catalogo').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
-            const { value: formValues } = await Swal.fire({ 
-                title: '<i class="ti ti-plus"></i> Nuevo Insumo', 
-                html: `
-                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
-                        <label style="font-weight: bold;">Código de Barras / QR</label>
-                        <input id="swal-crear-codigo" class="swal2-input" placeholder="Clickeá y escaneá con pistola o cámara" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
-                        <label style="font-weight: bold;">Nombre (Ej: Jugo Cepita naranja 1L)</label>
-                        <input id="swal-crear-nombre" class="swal2-input" placeholder="Nombre completo" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
-                        <label style="font-weight: bold;">Categoría</label>
-                        <select id="swal-crear-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="">Seleccionar categoría...</option>${opcionesCategoria}</select>
-                        <div style="display: flex; gap: 10px;">
-                            <div style="flex: 1;"><label style="font-weight: bold;">Formato del envase</label><input id="swal-crear-cantidad" type="number" class="swal2-input" placeholder="Ej. 1000" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
-                            <div style="flex: 1;"><label style="font-weight: bold;">Unidad de medida</label><select id="swal-crear-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros">Litros (L)</option><option value="ml">Mililitros (ml)</option><option value="Kg">Kilogramos (Kg)</option><option value="Gramos">Gramos (g)</option><option value="Unidades">Unidades (u)</option></select></div>
-                        </div>
-                        <label style="font-weight: bold;">Costo Unitario ($)</label>
-                        <input id="swal-crear-precio" type="number" class="swal2-input" placeholder="Ej. 1855" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
-                    </div>
-                `, 
-                showCancelButton: true, confirmButtonColor: '#2ecc71', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar', focusConfirm: false, 
-                preConfirm: () => { 
-                    const n = document.getElementById('swal-crear-nombre').value, t = document.getElementById('swal-crear-tipo').value, c = parseFloat(document.getElementById('swal-crear-cantidad').value), u = document.getElementById('swal-crear-unidad').value, p = parseFloat(document.getElementById('swal-crear-precio').value); 
-                    if (!n || !t || isNaN(c) || isNaN(p)) { Swal.showValidationMessage('Completá los campos obligatorios'); return false; } 
-                    return { nombre: n, tipo: t, cantidad: c, unidad_medida: u, precio: p, codigo_barras: document.getElementById('swal-crear-codigo').value, stock: 0, proveedor: '' }; 
-                } 
-            });
-            if (formValues) { try { if ((await fetch('/api/productos', { method: 'POST', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarDatosInventario(); Toast.fire({ icon: 'success', title: 'Producto guardado' }); } } catch (e) { console.error(e); } }
         }
 
         async function crearCategoria() { const { value: nombre } = await Swal.fire({ title: 'Nueva Categoría', input: 'text', inputLabel: 'Nombre de la categoría', showCancelButton: true, confirmButtonColor: '#2ecc71', confirmButtonText: 'Crear' }); if (!nombre || nombre.trim() === '') return; if ((await fetch('/api/categorias', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre }) })).ok) { Toast.fire({ icon: 'success', title: 'Categoría agregada' }); cargarDatosInventario(); } }
