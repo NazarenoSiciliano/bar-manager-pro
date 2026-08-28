@@ -11,7 +11,10 @@ router.get('/plantillas', productosController.getPlantillas);
 router.post('/plantillas', productosController.crearPlantilla);
 router.delete('/plantillas/:id', productosController.eliminarPlantilla);
 router.put('/plantillas/:id', productosController.actualizarPlantilla);
-
+// Rutas de Proveedores
+router.get('/proveedores', productosController.getProveedores);
+router.post('/proveedores', productosController.crearProveedor);
+router.delete('/proveedores/:id', productosController.eliminarProveedor);
 
 
 module.exports = router;
