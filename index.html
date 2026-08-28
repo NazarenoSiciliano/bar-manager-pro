@@ -4,316 +4,547 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bar Manager Pro - Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: #333; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        
-        .navbar { background-color: #2c3e50; color: white; padding: 15px 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
-        .navbar h1 { margin: 0; font-size: 1.5em; }
         .nav-links { display: flex; gap: 10px; }
-        .menu-btn { background-color: transparent; color: #ecf0f1; border: none; padding: 10px 15px; font-size: 16px; cursor: pointer; border-radius: 5px; transition: background 0.3s; }
-        .menu-btn:hover, .menu-btn.activo { background-color: #34495e; font-weight: bold; border-bottom: 3px solid #3498db; }
-        .btn-logout { background-color: #e74c3c; font-weight: bold; }
-        .btn-logout:hover { background-color: #c0392b; }
-
+        .menu-btn { background: transparent; color: #ecf0f1; border: none; padding: 10px 15px; font-size: 16px; cursor: pointer; border-radius: 5px; transition: background 0.3s; }
+        .menu-btn:hover, .menu-btn.activo { background: #34495e; font-weight: bold; border-bottom: 3px solid #3498db; }
+        .btn-logout { background: #e74c3c; font-weight: bold; }
         .main-content { padding: 30px; overflow-y: auto; flex: 1; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box;}
-        .seccion { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .seccion { display: none; animation: fadeIn 0.3s; }
         .seccion.activa { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
         .card-formulario { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .formulario-inline { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
         .formulario-inline > div { flex: 1; min-width: 150px; }
-        .formulario-inline input, .formulario-inline select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .formulario-inline input, .formulario-inline select, .formulario-inline textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button.btn-accion, label.btn-accion { background: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; justify-content: center;}
         
-        button.btn-accion { background-color: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button.btn-accion:hover { background-color: #2980b9; }
-
-        .grid-productos { list-style-type: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
-        .grid-productos li { background: white; padding: 20px; border-radius: 8px; border-left: 5px solid #3498db; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 5px; position: relative; }
-        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.2em; opacity: 0.6; padding: 0; }
-        .btn-icon:hover { opacity: 1; }
-
+        .grid-productos { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0; }
+        .fila-inventario { background: white; padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; transition: background-color 0.2s, transform 0.1s; border-radius: 0; }
+        .fila-inventario:hover { background-color: #f1f5f8; transform: translateX(5px); }
+        .encabezado-tabla { background: #2c3e50; color: white; border: none !important; padding: 12px 20px !important; font-weight: bold; border-radius: 8px 8px 0 0 !important; box-shadow: none !important; display: flex; align-items: center; justify-content: space-between;}
+        
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 1.2em; opacity: 0.6; padding: 0; transition: opacity 0.2s;}
+        .btn-icon:hover { opacity: 1; transform: scale(1.1); }
         .lista-mezcla { list-style: none; padding: 0; }
         .lista-mezcla li { background: #f8f9fa; padding: 10px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
-        .btn-danger-small { background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer; padding: 5px 10px; }
+        .btn-danger-small { background: #e74c3c; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;}
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        .caja-costo { background: #e8f4f8; padding: 20px; border-radius: 8px; border-left: 6px solid #2ecc71; margin-bottom: 20px; text-align: center; }
-        .caja-costo h2 { margin: 0; color: #27ae60; font-size: 2em; }
+        .navbar { background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-bottom: 1px solid #34495e; }
+        .navbar h1 { margin: 0; font-size: 1.5em; }
+
+        button.btn-accion, label.btn-accion { box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease; }
+        button.btn-accion:hover, label.btn-accion:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); opacity: 0.95; }
+        button.btn-accion:active, label.btn-accion:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #3498db !important; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2); transition: border-color 0.2s, box-shadow 0.2s; }
+        .card-formulario { transition: box-shadow 0.3s ease; }
+        .card-formulario:hover { box-shadow: 0 8px 15px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
 
+    <select id="select-ingredientes" style="display: none;"></select>
+
     <div class="navbar">
         <h1>🍸 Bar Manager Pro</h1>
         <div class="nav-links">
-            <button class="menu-btn activo" onclick="cambiarSeccion('sec-inventario', this)">📦 Inventario</button>
-            <button class="menu-btn" onclick="cambiarSeccion('sec-recetas', this)">🍹 Recetas</button>
-            <button class="menu-btn" onclick="cambiarSeccion('sec-eventos', this)">📊 Eventos</button>
+            <button class="menu-btn activo" onclick="cambiarSeccion('sec-dashboard', this)"><i class="ti ti-layout-dashboard"></i> Inicio</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-inventario', this)"><i class="ti ti-box"></i> Inventario</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-recetas', this)"><i class="ti ti-glass-cocktail"></i> Recetas</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-eventos', this)"><i class="ti ti-chart-bar"></i> Cotizador</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-agenda', this)"><i class="ti ti-calendar"></i> Agenda</button>
         </div>
         <button class="menu-btn btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
     </div>
 
     <div class="main-content">
 
-        <!-- VISTA 1: INVENTARIO -->
-        <div id="sec-inventario" class="seccion activa">
-            <h2>Gestión de Inventario</h2>
-            <div class="card-formulario">
-                <h3 id="titulo-form-producto">➕ Ingresar Nuevo Producto</h3>
-                <div class="formulario-inline">
-                    <div><input type="text" id="nuevo-nombre" placeholder="Nombre (ej. Limón, Gin)"></div>
-                    <div>
-                        <select id="nuevo-tipo">
-                            <optgroup label="Insumos"><option value="Fruta">Fruta Fresca</option><option value="Jarabe/Almíbar">Jarabe</option><option value="Garnish">Garnish</option></optgroup>
-                            <optgroup label="Bebidas"><option value="Bebida Blanca">Bebida Blanca</option><option value="Licor">Licor</option><option value="Jugo/Gaseosa">Mixer</option></optgroup>
-                        </select>
-                    </div>
-                    <div><input type="number" id="nuevo-precio" placeholder="Costo Total ($)"></div>
-                    <button id="btn-guardar-producto" class="btn-accion" onclick="guardarProducto()">Guardar</button>
-                    <button id="btn-cancelar-edicion" class="btn-accion" style="background-color: #95a5a6; display: none;" onclick="cancelarEdicion()">Cancelar</button>
+        <!-- DASHBOARD (INICIO) -->
+        <div id="sec-dashboard" class="seccion activa">
+            <h2 style="margin-top:0; color: #2c3e50;">Panel de Control</h2>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div class="card-formulario" style="flex: 2; min-width: 300px; border-top: 5px solid #3498db;">
+                    <h3 style="margin-top: 0; color: #2c3e50;"><i class="ti ti-calendar-event"></i> Próximos Eventos</h3>
+                    <ul id="dash-eventos" class="grid-productos" style="border-radius: 8px; overflow: hidden; border: 1px solid #eee;"></ul>
+                </div>
+                <div class="card-formulario" style="flex: 1.5; min-width: 300px; border-top: 5px solid #e74c3c;">
+                    <h3 style="margin-top: 0; color: #2c3e50;"><i class="ti ti-alert-triangle"></i> Análisis de Stock Crítico</h3>
+                    <p style="font-size: 0.85em; color: #666; margin-bottom: 15px;">El sistema cruza tu inventario actual contra todo lo que vas a necesitar para los eventos futuros.</p>
+                    <ul id="dash-alertas" class="lista-mezcla" style="border-radius: 8px; overflow: hidden; border: 1px solid #eee;"></ul>
                 </div>
             </div>
-            <ul id="lista-categorias" class="grid-productos"></ul>
         </div>
 
-        <!-- VISTA 2: CREADOR Y LISTADO DE RECETAS -->
-        <div id="sec-recetas" class="seccion">
-            <h2>Laboratorio de Recetas</h2>
+        <!-- INVENTARIO -->
+        <div id="sec-inventario" class="seccion">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h2 style="margin: 0;">Gestión de Inventario</h2>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-accion" style="background-color: #2ecc71;" onclick="abrirModalCrearProducto()"><i class="ti ti-plus"></i> Nuevo Producto</button>
+                    <button class="btn-accion" style="background-color: #34495e;" onclick="crearCategoria()"><i class="ti ti-folder-plus"></i> Nueva Categoría</button>
+                    <label for="archivo-excel" class="btn-accion" style="background-color: #8e44ad; margin: 0; cursor: pointer;"><i class="ti ti-upload"></i> Importar Excel</label>
+                    <input type="file" id="archivo-excel" accept=".xlsx, .xls" style="display: none;" onchange="importarExcel()">
+                </div>
+            </div>
+
+            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <strong style="white-space: nowrap;"><i class="ti ti-filter"></i> Filtrar por Categoría:</strong>
+                <select id="filtro-inventario" onchange="filtrarInventario()" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 1.1em;">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
             
-            <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-                <div class="card-formulario" style="flex: 1; min-width: 300px;">
-                    <h3>🍹 Nueva Mezcla</h3>
-                    <input type="text" id="nombre-trago" placeholder="Nombre del Trago (ej. Mojito)" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
-                    <div class="formulario-inline">
-                        <div style="flex: 2;"><select id="select-ingredientes"><option value="">Cargando...</option></select></div>
-                        <div style="flex: 1;"><input type="number" id="cantidad-ingrediente" placeholder="Cant."></div>
-                        <button class="btn-accion" style="background-color: #f39c12;" onclick="agregarALaMezcla()">Añadir</button>
-                    </div>
-                    <h4 style="margin-top: 20px;">En la coctelera:</h4>
-                    <ul id="lista-mezcla" class="lista-mezcla"></ul>
-                    <button class="btn-accion" style="width: 100%; margin-top: 20px; background-color: #2ecc71;" onclick="guardarReceta()">💾 Guardar Receta Final</button>
+            <ul id="lista-categorias" class="grid-productos" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"></ul>
+        </div>
+
+        <!-- RECETAS -->
+        <div id="sec-recetas" class="seccion">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h2 style="margin: 0;">Laboratorio de Recetas</h2>
+                <button class="btn-accion" style="background-color: #f39c12;" onclick="abrirModalReceta()"><i class="ti ti-flask"></i> Nueva Receta</button>
+            </div>
+            <ul id="lista-recetas-guardadas" class="grid-productos" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"></ul>
+        </div>
+
+        <!-- EVENTOS (Cotizador) -->
+        <div id="sec-eventos" class="seccion">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h2 style="margin: 0;">Planificador y Cotizador</h2>
+                <button class="btn-accion" style="background-color: #3498db;" onclick="toggleFormulario('form-cotizador')"><i class="ti ti-calculator"></i> Nueva Cotización Manual</button>
+            </div>
+
+            <h3 style="margin-top: 0; color: #2c3e50;"><i class="ti ti-bookmarks"></i> Plantillas Guardadas</h3>
+            <ul id="lista-plantillas" class="grid-productos" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 30px;"></ul>
+            
+            <div id="form-cotizador" class="card-formulario" style="display: none; border-left: 5px solid #3498db; max-width: 800px; margin: 0 auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;"><i class="ti ti-glass-full"></i> Armar Menú del Evento</h3>
+                    <button class="btn-accion" style="background-color: #27ae60; padding: 8px 15px;" onclick="guardarComoPlantilla()"><i class="ti ti-device-floppy"></i> Guardar Menú en Plantillas</button>
+                </div>
+
+                <div class="formulario-inline" style="margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
+                    <div style="flex: 1;"><label style="font-weight: bold;"><i class="ti ti-users"></i> Cant. Invitados</label><input type="number" id="evento-personas" placeholder="Ej: 80" style="font-size: 1.2em; font-weight: bold; color: #2c3e50;"></div>
+                    <div style="flex: 1;"><label style="font-weight: bold;"><i class="ti ti-glass-full"></i> Tragos x Persona</label><input type="number" id="evento-consumo" value="6" title="Promedio estimado" style="font-size: 1.2em;"></div>
+                </div>
+
+                <div class="formulario-inline">
+                    <div style="flex: 2;"><select id="select-tragos-evento"><option value="">Seleccionar trago para el menú...</option></select></div>
+                    <button class="btn-accion" style="background-color: #f39c12;" onclick="agregarTragoAlEvento()"><i class="ti ti-plus"></i> Añadir al Menú</button>
                 </div>
                 
-                <div style="flex: 2; min-width: 400px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0;">📚 Recetario Creado</h3>
-                        <button class="btn-accion" style="background-color: #2ecc71; padding: 8px 15px;" onclick="cargarRecetasGuardadas()">🔄 Refrescar</button>
-                    </div>
-                    <ul id="lista-recetas-guardadas" class="grid-productos" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));"></ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- VISTA 3: COTIZADOR DE EVENTOS MULTI-TRAGO -->
-        <div id="sec-eventos" class="seccion">
-            <h2>Planificador Financiero y Logístico</h2>
-            <div class="card-formulario" style="max-width: 700px;">
-                <div class="formulario-inline">
-                    <div style="flex: 2;"><select id="select-tragos-evento"><option value="">Cargando tragos...</option></select></div>
-                    <div style="flex: 1;"><input type="number" id="cantidad-servicios" placeholder="Cant. Servicios"></div>
-                    <button class="btn-accion" style="background-color: #f39c12;" onclick="agregarTragoAlEvento()">Añadir al Menú</button>
-                </div>
                 <h4 style="margin-top: 20px;">Menú seleccionado para el evento:</h4>
                 <ul id="lista-tragos-evento" class="lista-mezcla"></ul>
-                <button class="btn-accion" style="width: 100%; margin-top: 20px;" onclick="calcularEvento()">📊 Calcular Costos y Logística</button>
-            </div>
-
-            <div id="resultado-evento" style="background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: none;">
-                <h3 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">📋 Reporte de Producción</h3>
                 
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn-accion" style="background-color: #e74c3c; flex: 1;" onclick="toggleFormulario('form-cotizador')"><i class="ti ti-x"></i> Cerrar</button>
+                    <button class="btn-accion" style="background-color: #3498db; flex: 2;" onclick="calcularEvento()"><i class="ti ti-calculator"></i> Calcular Costos y Logística</button>
+                </div>
+            </div>
+            
+            <div id="resultado-evento" style="background: white; padding: 30px; border-radius: 8px; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 20px; border-top: 5px solid #2ecc71;">
+                <h3 style="text-align: center; margin-bottom: 20px; color: #2c3e50;"><i class="ti ti-report"></i> Reporte de Producción</h3>
                 <div id="detalle-logistica"></div>
-
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;">
-                <h4>🛒 Lista de Compras a Granel:</h4>
+                <h4><i class="ti ti-shopping-cart"></i> Lista de Compras Insumos:</h4>
                 <ul id="lista-compras-evento" style="padding-left: 20px; line-height: 1.8;"></ul>
-                
-                <button class="btn-accion" style="background-color: #e74c3c; width: 100%; margin-top: 20px;" onclick="exportarPDF()">📄 Descargar Reporte en PDF</button>
+                <button class="btn-accion" style="background-color: #e74c3c; width: 100%; margin-top: 20px;" onclick="exportarPDF()"><i class="ti ti-file-type-pdf"></i> Descargar PDF</button>
             </div>
+        </div>
+
+        <!-- AGENDA -->
+        <div id="sec-agenda" class="seccion">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h2 style="margin: 0;">Agenda de Eventos</h2>
+                <button class="btn-accion" style="background-color: #9b59b6;" onclick="toggleFormulario('form-agenda')"><i class="ti ti-calendar-plus"></i> Nuevo Evento Manual</button>
+            </div>
+
+            <div id="form-agenda" class="card-formulario" style="display: none; border-left: 5px solid #9b59b6; max-width: 800px; margin: 0 auto 30px auto;">
+                <h3><i class="ti ti-calendar-plus"></i> Agendar Cliente</h3>
+                <div class="formulario-inline" style="flex-direction: column; align-items: stretch;">
+                    <input type="text" id="agenda-cliente" placeholder="Nombre del Cliente / Empresa">
+                    <input type="date" id="agenda-fecha">
+                    <input type="text" id="agenda-direccion" placeholder="Dirección del Evento (Opcional)">
+                    <input type="number" id="agenda-cotizacion" placeholder="Presupuesto Final a Cobrar (Opcional)">
+                    <textarea id="agenda-detalles" placeholder="Detalles extra (Horarios, temáticas, etc)" rows="3"></textarea>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button class="btn-accion" style="background-color: #e74c3c; flex: 1;" onclick="toggleFormulario('form-agenda')"><i class="ti ti-x"></i> Cancelar</button>
+                        <button class="btn-accion" style="background-color: #9b59b6; flex: 2;" onclick="guardarEventoAgenda()"><i class="ti ti-device-floppy"></i> Guardar en Agenda</button>
+                    </div>
+                </div>
+            </div>
+
+            <ul id="lista-agenda" class="grid-productos" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"></ul>
         </div>
 
     </div>
 
     <script>
+        function formatoMoneda(numero) { return new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numero); }
+
+        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+
         if (!localStorage.getItem('bar_token') && window.location.pathname.endsWith('index.html')) window.location.href = 'login.html';
         function cerrarSesion() { localStorage.removeItem('bar_token'); window.location.href = 'login.html'; }
-        function cambiarSeccion(idSeccion, boton) {
-            document.querySelectorAll('.seccion').forEach(sec => sec.classList.remove('activa'));
-            document.getElementById(idSeccion).classList.add('activa');
-            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('activo'));
-            boton.classList.add('activo');
+        
+        function cambiarSeccion(id, btn) { 
+            document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa')); 
+            document.getElementById(id).classList.add('activa'); 
+            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('activo')); 
+            btn.classList.add('activo'); 
         }
 
-        let mezclaActual = []; let tragosEventoActual = []; let productoEnEdicion = null; 
+        function toggleFormulario(id) {
+            const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
 
-        // --- INVENTARIO ---
+        // --- VARIABLES GLOBALES ---
+        let mezclaActual = []; let tragosEventoActual = []; let plantillasGuardadas = [];
+        let costoActualReceta = 0; let costoNetoEventoActual = 0; let totalCobrarEventoActual = 0;
+        let recetaEditandoId = null; let recetasGuardadasData = []; let tragosPlantillaActual = [];
+        let comprasEventoActual = []; 
+
+        function getHeaders(incluirContentType = true) {
+            const token = localStorage.getItem('bar_token');
+            const headers = { 'Authorization': `Bearer ${token}` };
+            if (incluirContentType) { headers['Content-Type'] = 'application/json'; }
+            return headers;
+        }
+
+        // --- DASHBOARD (INICIO) ---
+        async function cargarDashboard() {
+            try {
+                const resAge = await fetch('/api/agenda', { headers: getHeaders(false) }); const agenda = await resAge.json();
+                const resInv = await fetch('/api/productos', { headers: getHeaders(false) }); const inventario = await resInv.json();
+                const hoy = new Date(); hoy.setHours(0,0,0,0);
+                
+                const futuros = agenda.filter(e => new Date(e.fecha) >= hoy).sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+                const listaEv = document.getElementById('dash-eventos');
+                
+                if(futuros.length === 0) {
+                    listaEv.innerHTML = '<li style="padding: 20px; color: #7f8c8d; text-align: center;">No tenés próximos eventos agendados.</li>';
+                } else {
+                    listaEv.innerHTML = futuros.map(e => `
+                        <li class="fila-inventario" style="padding: 12px 20px; border-left: 4px solid #3498db;">
+                            <div style="flex: 2;"><strong style="color:#2c3e50; font-size: 1.1em;">${e.cliente}</strong><br><span style="font-size: 0.9em; color: #e67e22; font-weight: bold;"><i class="ti ti-calendar"></i> ${new Date(e.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</span></div>
+                            <div style="text-align:right;"><span style="color:#27ae60; font-weight:bold; font-size: 1.1em;">$${formatoMoneda(e.cotizacion_total)}</span></div>
+                        </li>
+                    `).join('');
+                }
+
+                let stockProyectado = inventario.map(p => ({ ...p }));
+                let alertasStock = [];
+
+                futuros.forEach(evento => {
+                    if (evento.insumos) {
+                        let insumosRequeridos = typeof evento.insumos === 'string' ? JSON.parse(evento.insumos) : evento.insumos;
+                        insumosRequeridos.forEach(insumo => {
+                            let itemEnStock = stockProyectado.find(p => p.nombre.toLowerCase() === insumo.ingrediente.toLowerCase());
+                            if (itemEnStock) { itemEnStock.cantidad -= insumo.cantidadTotal; } 
+                            else { alertasStock.push({ nombre: insumo.ingrediente, faltante: insumo.cantidadTotal, unidad: insumo.unidad }); }
+                        });
+                    }
+                });
+
+                stockProyectado.forEach(p => {
+                    if (p.cantidad <= 0) { alertasStock.push({ nombre: p.nombre, faltante: Math.abs(p.cantidad) === 0 ? 0 : Math.abs(p.cantidad), unidad: p.unidad_medida, stock_cero: p.cantidad === 0 }); }
+                });
+
+                const listaAl = document.getElementById('dash-alertas');
+                if(alertasStock.length === 0) {
+                    listaAl.innerHTML = '<div style="text-align:center; padding: 30px; color:#27ae60;"><i class="ti ti-circle-check" style="font-size:3em;"></i><br><strong style="font-size:1.2em;">Todo en orden</strong><br>Tenés stock suficiente en el inventario para cubrir los próximos eventos.</div>';
+                } else {
+                    listaAl.innerHTML = alertasStock.map(a => `
+                        <li style="border-left: 4px solid ${a.stock_cero ? '#f39c12' : '#e74c3c'}; background: ${a.stock_cero ? '#fff8e1' : '#fdf0ed'}; padding: 12px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="color: #2c3e50;">${a.nombre}</strong>
+                            <span style="color: ${a.stock_cero ? '#d35400' : '#c0392b'}; font-weight: bold; font-size: 0.9em;">
+                                ${a.stock_cero ? '<i class="ti ti-alert-circle"></i> Stock quedará en 0' : `<i class="ti ti-arrow-down"></i> Faltan comprar: ${a.faltante.toFixed(2)} ${a.unidad}`}
+                            </span>
+                        </li>
+                    `).join('');
+                }
+            } catch (e) { console.error("Error cargando Dashboard:", e); }
+        }
+
+        // --- INVENTARIO (CON CÓDIGO DE BARRAS) ---
+        function filtrarInventario() { const categoriaElegida = document.getElementById('filtro-inventario').value; document.querySelectorAll('#lista-categorias li:not(.encabezado-tabla)').forEach(li => { const categoriaItem = li.getAttribute('data-categoria'); li.style.display = (categoriaElegida === '' || categoriaItem === categoriaElegida) ? 'flex' : 'none'; }); }
+
+        async function cargarSelectCategorias() { try { const res = await fetch('/api/categorias', { headers: getHeaders(false) }); const categorias = await res.json(); const selectFiltro = document.getElementById('filtro-inventario'); selectFiltro.innerHTML = '<option value="">Todas las categorías</option>'; categorias.forEach(c => { selectFiltro.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; }); } catch (e) { console.error(e); } }
+
+        async function abrirModalCrearProducto() {
+            const opcionesCategoria = Array.from(document.getElementById('filtro-inventario').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
+            const { value: formValues } = await Swal.fire({ 
+                title: '<i class="ti ti-plus"></i> Nuevo Producto', 
+                html: `
+                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
+                        <label style="font-weight: bold;">Código de Barras / QR (Opcional)</label>
+                        <input id="swal-crear-codigo" class="swal2-input" placeholder="Clickeá y escaneá con pistola o cámara" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
+                        
+                        <label style="font-weight: bold;">Nombre</label>
+                        <input id="swal-crear-nombre" class="swal2-input" placeholder="Ej. Limón, Gin" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
+                        
+                        <label style="font-weight: bold;">Categoría</label>
+                        <select id="swal-crear-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="">Seleccionar categoría...</option>${opcionesCategoria}</select>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <div style="flex: 1;"><label style="font-weight: bold;">Formato (Cant)</label><input id="swal-crear-cantidad" type="number" class="swal2-input" placeholder="Ej. 1" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
+                            <div style="flex: 1;"><label style="font-weight: bold;">Unidad</label><select id="swal-crear-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros">Litros (L)</option><option value="ml">Mililitros (ml)</option><option value="Kg">Kilogramos (Kg)</option><option value="Gramos">Gramos (g)</option><option value="Unidades">Unidades (u)</option></select></div>
+                        </div>
+                        <label style="font-weight: bold;">Costo Total ($)</label>
+                        <input id="swal-crear-precio" type="number" class="swal2-input" placeholder="Precio final" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
+                    </div>
+                `, 
+                showCancelButton: true, confirmButtonColor: '#2ecc71', cancelButtonColor: '#95a5a6', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Producto', focusConfirm: false, 
+                preConfirm: () => { 
+                    const nombre = document.getElementById('swal-crear-nombre').value, tipo = document.getElementById('swal-crear-tipo').value, cantidad = parseFloat(document.getElementById('swal-crear-cantidad').value), unidad_medida = document.getElementById('swal-crear-unidad').value, precio = parseFloat(document.getElementById('swal-crear-precio').value), codigo_barras = document.getElementById('swal-crear-codigo').value; 
+                    if (!nombre || !tipo || isNaN(cantidad) || isNaN(precio)) { Swal.showValidationMessage('Completá todos los campos obligatorios para continuar'); return false; } 
+                    return { nombre, tipo, cantidad, unidad_medida, precio, codigo_barras }; 
+                } 
+            });
+            if (formValues) { try { if ((await fetch('/api/productos', { method: 'POST', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarCategorias(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Producto guardado' }); } } catch (e) { console.error(e); } }
+        }
+
+        async function crearCategoria() { const { value: nombre } = await Swal.fire({ title: 'Nueva Categoría', input: 'text', inputLabel: 'Nombre de la categoría', showCancelButton: true, confirmButtonColor: '#2ecc71', confirmButtonText: 'Crear' }); if (!nombre || nombre.trim() === '') return; if ((await fetch('/api/categorias', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre }) })).ok) { Toast.fire({ icon: 'success', title: 'Categoría agregada' }); cargarSelectCategorias(); } }
+        
+        function importarExcel() { const fileInput = document.getElementById('archivo-excel'); if (!fileInput.files.length) return Swal.fire('Atención', 'Seleccioná un archivo Excel.', 'warning'); const reader = new FileReader(); reader.onload = async (e) => { const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'}); const sheet = workbook.Sheets[workbook.SheetNames[0]]; const jsonData = XLSX.utils.sheet_to_json(sheet); const productos = jsonData.map(row => ({ nombre: row.Nombre || row.nombre, tipo: row.Categoria || row.categoria || "Otros", cantidad: parseFloat(row.Cantidad || row.cantidad || 1), unidad_medida: row.Unidad || row.unidad || "Unidades", precio: parseFloat(row.Precio || row.precio || 0) })); try { Swal.fire({ title: 'Importando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } }); if ((await fetch('/api/productos/bulk', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ productos }) })).ok) { Swal.fire('¡Listo!', `Importados.`, 'success'); fileInput.value = ''; cargarCategorias(); cargarSelectCategorias(); cargarDashboard(); } else Swal.fire("Error", "Error en el servidor.", "error"); } catch (error) { console.error(error); } }; reader.readAsArrayBuffer(fileInput.files[0]); }
+
         async function cargarCategorias() {
             try {
-                // CAMBIO A RUTA RELATIVA
-                const respuesta = await fetch('/api/productos');
-                const datos = await respuesta.json(); 
-                const lista = document.getElementById('lista-categorias'); const selectIngredientes = document.getElementById('select-ingredientes');
-                lista.innerHTML = ''; selectIngredientes.innerHTML = '<option value="">Seleccioná un ingrediente...</option>'; 
-                datos.forEach(producto => {
+                const res = await fetch('/api/productos', { headers: getHeaders(false) }); const datos = await res.json(); 
+                const lista = document.getElementById('lista-categorias'), selIng = document.getElementById('select-ingredientes');
+                lista.innerHTML = `
+                    <li class="encabezado-tabla">
+                        <div style="flex: 2; min-width: 180px;">Producto</div><div style="flex: 1; min-width: 120px;">Categoría</div>
+                        <div style="flex: 1; min-width: 120px;">Formato</div><div style="flex: 1; min-width: 100px;">Costo</div><div style="flex: 0.5; text-align: right;">Acciones</div>
+                    </li>`;
+                selIng.innerHTML = '<option value="">Seleccionar ingrediente...</option>'; 
+                datos.forEach(p => {
+                    let iconoCodigo = p.codigo_barras ? '<i class="ti ti-barcode" title="Con Código de Barras" style="color: #3498db;"></i> ' : '';
                     lista.innerHTML += `
-                        <li>
-                            <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 5px;">
-                                <button class="btn-icon" onclick="prepararEdicion(${producto.id}, '${producto.nombre}', '${producto.tipo}', ${producto.precio})" title="Editar">✏️</button>
-                                <button class="btn-icon" onclick="borrarProducto(${producto.id}, '${producto.nombre}')" title="Eliminar">🗑️</button>
-                            </div>
-                            <strong style="font-size: 1.2em; margin-top: 15px;">${producto.nombre}</strong>
-                            <span style="color: #666; font-size: 0.9em;">📁 ${producto.tipo}</span>
-                            <span style="color: #2ecc71; font-weight: bold; font-size: 1.1em; margin-top: 5px;">💰 $${producto.precio}</span>
-                        </li>`;
-                    selectIngredientes.innerHTML += `<option value="${producto.id}">${producto.nombre}</option>`;
+                    <li class="fila-inventario" data-categoria="${p.tipo}" style="border-left: 5px solid #3498db;">
+                        <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">${iconoCodigo}${p.nombre}</strong></div>
+                        <div style="flex: 1; min-width: 120px; color: #666; font-size: 0.9em;"><i class="ti ti-folder"></i> ${p.tipo}</div>
+                        <div style="flex: 1; min-width: 120px; color: #888; font-size: 0.9em;"><i class="ti ti-package"></i> ${p.cantidad} ${p.unidad_medida}</div>
+                        <div style="flex: 1; min-width: 100px; color: #27ae60; font-weight: bold; font-size: 1em;">$${formatoMoneda(p.precio)}</div>
+                        <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
+                            <button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="prepararEdicion(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', '${p.tipo}', ${p.precio}, ${p.cantidad}, '${p.unidad_medida}', '${p.codigo_barras || ''}')" title="Ver / Editar"><i class="ti ti-eye"></i></button>
+                            <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarProducto(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="ti ti-x"></i></button>
+                        </div>
+                    </li>`;
+                    selIng.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-formato="${p.cantidad}">${p.nombre} (en ${p.unidad_medida})</option>`;
                 });
-            } catch (error) { console.error("Error:", error); }
+            } catch (e) { console.error(e); }
         }
 
-        function prepararEdicion(id, nombre, tipo, precio) {
-            productoEnEdicion = id; document.getElementById('nuevo-nombre').value = nombre;
-            const selectTipo = document.getElementById('nuevo-tipo');
-            for(let i=0; i < selectTipo.options.length; i++) if(selectTipo.options[i].value === tipo) selectTipo.selectedIndex = i;
-            document.getElementById('nuevo-precio').value = precio;
-            document.getElementById('titulo-form-producto').innerText = "✏️ Editar Producto";
-            document.getElementById('btn-guardar-producto').innerText = "Actualizar";
-            document.getElementById('btn-cancelar-edicion').style.display = "block"; window.scrollTo(0, 0); 
-        }
-
-        function cancelarEdicion() {
-            productoEnEdicion = null; document.getElementById('nuevo-nombre').value = ''; document.getElementById('nuevo-precio').value = '';
-            document.getElementById('titulo-form-producto').innerText = "➕ Ingresar Nuevo Producto";
-            document.getElementById('btn-guardar-producto').innerText = "Guardar";
-            document.getElementById('btn-cancelar-edicion').style.display = "none";
-        }
-
-        async function guardarProducto() {
-            const nombre = document.getElementById('nuevo-nombre').value; const tipo = document.getElementById('nuevo-tipo').value; const precio = parseFloat(document.getElementById('nuevo-precio').value);
-            if (!nombre || !precio) return alert("Completá nombre y valor.");
-            try {
-                // CAMBIO A RUTA RELATIVA
-                const url = productoEnEdicion ? `/api/productos/${productoEnEdicion}` : '/api/productos';
-                const metodo = productoEnEdicion ? 'PUT' : 'POST';
-                const res = await fetch(url, { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, tipo, precio }) });
-                if (res.ok) { cancelarEdicion(); cargarCategorias(); }
-            } catch (error) { console.error("Error:", error); }
+        async function prepararEdicion(id, nom, tipo, pre, cant, uni, cod) {
+            const opcionesCategoria = Array.from(document.getElementById('filtro-inventario').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}" ${opt.value === tipo ? 'selected' : ''}>${opt.text}</option>`).join('');
+            const valorCodigo = (cod === 'null' || cod === 'undefined' || !cod) ? '' : cod;
+            const { value: formValues } = await Swal.fire({ 
+                title: '<i class="ti ti-eye"></i> Editar Producto', 
+                html: `
+                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
+                        <label style="font-weight: bold;">Código de Barras / QR</label>
+                        <input id="swal-edit-codigo" class="swal2-input" value="${valorCodigo}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
+                        
+                        <label style="font-weight: bold;">Nombre</label>
+                        <input id="swal-edit-nombre" class="swal2-input" value="${nom}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
+                        
+                        <label style="font-weight: bold;">Categoría</label>
+                        <select id="swal-edit-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">${opcionesCategoria}</select>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <div style="flex: 1;"><label style="font-weight: bold;">Formato (Cant)</label><input id="swal-edit-cantidad" type="number" class="swal2-input" value="${cant}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
+                            <div style="flex: 1;"><label style="font-weight: bold;">Unidad</label><select id="swal-edit-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros" ${uni==='Litros'?'selected':''}>Litros (L)</option><option value="ml" ${uni==='ml'?'selected':''}>Mililitros (ml)</option><option value="Kg" ${uni==='Kg'?'selected':''}>Kilogramos (Kg)</option><option value="Gramos" ${uni==='Gramos'?'selected':''}>Gramos (g)</option><option value="Unidades" ${uni==='Unidades'?'selected':''}>Unidades (u)</option></select></div>
+                        </div>
+                        <label style="font-weight: bold;">Costo Total ($)</label>
+                        <input id="swal-edit-precio" type="number" class="swal2-input" value="${pre}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
+                    </div>
+                `, 
+                showCancelButton: true, confirmButtonColor: '#3498db', cancelButtonColor: '#e74c3c', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Cambios', focusConfirm: false, 
+                preConfirm: () => { 
+                    return { 
+                        nombre: document.getElementById('swal-edit-nombre').value, 
+                        tipo: document.getElementById('swal-edit-tipo').value, 
+                        cantidad: parseFloat(document.getElementById('swal-edit-cantidad').value), 
+                        unidad_medida: document.getElementById('swal-edit-unidad').value, 
+                        precio: parseFloat(document.getElementById('swal-edit-precio').value),
+                        codigo_barras: document.getElementById('swal-edit-codigo').value 
+                    } 
+                } 
+            });
+            if (formValues) { if ((await fetch(`/api/productos/${id}`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarCategorias(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Actualizado' }); } }
         }
 
         async function borrarProducto(id, nombre) {
-            if (!confirm(`¿Estás seguro de que querés borrar "${nombre}"?`)) return;
-            try {
-                // CAMBIO A RUTA RELATIVA
-                const res = await fetch(`/api/productos/${id}`, { method: 'DELETE' });
-                if (res.ok) cargarCategorias(); else alert("No se pudo eliminar: " + (await res.json()).error);
-            } catch (error) { console.error("Error:", error); }
+            if (!(await Swal.fire({ title: `¿Borrar "${nombre}"?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Sí, borrar' })).isConfirmed) return;
+            if ((await fetch(`/api/productos/${id}`, { method: 'DELETE', headers: getHeaders(false) })).ok) { cargarCategorias(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Eliminado' }); }
         }
 
         // --- RECETAS ---
-        function agregarALaMezcla() {
-            const select = document.getElementById('select-ingredientes');
-            if (!select.value || !document.getElementById('cantidad-ingrediente').value) return;
-            mezclaActual.push({ ingrediente_id: select.value, nombre: select.options[select.selectedIndex].text, cantidad: document.getElementById('cantidad-ingrediente').value });
-            document.getElementById('cantidad-ingrediente').value = ''; select.value = ''; actualizarVistaMezcla();
+        async function abrirModalReceta(id = null) {
+            let receta = null;
+            if (id) { receta = recetasGuardadasData.find(r => r.id === id); mezclaActual = receta.ingredientes.map(i => ({ ingrediente_id: i.ingrediente_id, nombre: i.nombre, cantidad: parseFloat(i.cantidad), unidad: i.unidad_medida, costo_parcial: parseFloat(i.costo_ingrediente) })); recetaEditandoId = id; } else { mezclaActual = []; recetaEditandoId = null; }
+            const opcionesIngredientes = Array.from(document.getElementById('select-ingredientes').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}" data-precio="${opt.getAttribute('data-precio')}" data-formato="${opt.getAttribute('data-formato')}">${opt.text}</option>`).join('');
+            const { value: formValues } = await Swal.fire({ title: id ? '<i class="ti ti-eye"></i> Ver / Editar Receta' : '<i class="ti ti-blender"></i> Nueva Receta', width: '700px', html: `<div style="text-align: left; font-size: 0.9em;"><label style="font-weight: bold;">Nombre del Trago</label><input id="swal-receta-nombre" class="swal2-input" value="${receta ? receta.nombre : ''}" placeholder="Ej. Mojito" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;"><div style="flex: 2; min-width: 150px;"><label style="font-weight: bold;">Ingrediente</label><select id="swal-receta-ingrediente" class="swal2-input" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;"><option value="">Seleccionar...</option>${opcionesIngredientes}</select></div><div style="flex: 1; min-width: 100px;"><label style="font-weight: bold;">Cant.</label><input id="swal-receta-cantidad" type="number" class="swal2-input" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;"></div><button class="btn-accion" style="background-color: #34495e; padding: 12px 15px; margin-top: 5px;" onclick="agregarIngredienteSwal(event)"><i class="ti ti-plus"></i> Añadir</button></div><h4 style="margin: 15px 0 5px 0;">En la coctelera:</h4><ul id="swal-lista-mezcla" class="lista-mezcla" style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; padding: 5px;"></ul><div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-top: 15px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; border: 1px solid #bce8f1;"><div><span style="color: #555; font-size: 0.85em;">Costo Insumos:</span><br><strong style="font-size: 1.2em; color: #2980b9;">$<span id="swal-costo-vivo">0,00</span></strong></div><div><span style="color: #555; font-size: 0.85em;">Margen Ganancia (%):</span><br><input type="number" id="swal-margen" value="100" style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold;" oninput="actualizarPrecioSwal()"></div><div style="text-align: right;"><span style="color: #555; font-size: 0.85em;">Precio Venta:</span><br><div style="display: flex; align-items: center; gap: 5px;"><strong style="font-size: 1.2em; color: #27ae60;">$</strong><input type="number" id="swal-precio-venta" value="${receta ? receta.precio_venta : ''}" style="width: 90px; padding: 5px; font-weight: bold; color: #27ae60; border: 2px solid #2ecc71; border-radius: 4px; font-size: 1em;"></div></div></div></div>`, showCancelButton: true, confirmButtonColor: '#3498db', cancelButtonColor: '#e74c3c', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Cambios', focusConfirm: false, didOpen: () => { renderizarMezclaSwal(); }, preConfirm: () => { const n = document.getElementById('swal-receta-nombre').value; const p = document.getElementById('swal-precio-venta').value; if (!n || !mezclaActual.length) { Swal.showValidationMessage('Completá el nombre y agregá ingredientes.'); return false; } return { nombre: n, precio_venta: p, ingredientes: mezclaActual }; } });
+            if (formValues) { const url = recetaEditandoId ? `/api/productos/recetas/${recetaEditandoId}` : '/api/productos/recetas'; const metodo = recetaEditandoId ? 'PUT' : 'POST'; if ((await fetch(url, { method: metodo, headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { Swal.fire('¡Excelente!', recetaEditandoId ? 'Receta actualizada.' : 'Receta guardada.', 'success'); carTra(); carRec(); } }
         }
-        function actualizarVistaMezcla() {
-            const ul = document.getElementById('lista-mezcla'); ul.innerHTML = ''; 
-            mezclaActual.forEach((item, index) => { ul.innerHTML += `<li>${item.cantidad} de ${item.nombre} <button class="btn-danger-small" onclick="quitarDeMezcla(${index})">X</button></li>`; });
+        function agregarIngredienteSwal(e) { if(e) e.preventDefault(); const s = document.getElementById('swal-receta-ingrediente'); const c = parseFloat(document.getElementById('swal-receta-cantidad').value); if (!s.value || isNaN(c) || c <= 0) return; const opt = s.options[s.selectedIndex]; const precio = parseFloat(opt.getAttribute('data-precio')), formato = parseFloat(opt.getAttribute('data-formato')); const costoParcial = (precio / formato) * c; mezclaActual.push({ ingrediente_id: s.value, nombre: opt.text.split(' (')[0], cantidad: c, unidad: opt.text.split(' (en ')[1].replace(')',''), costo_parcial: costoParcial }); document.getElementById('swal-receta-cantidad').value = ''; s.value = ''; renderizarMezclaSwal(); }
+        function renderizarMezclaSwal() { const lista = document.getElementById('swal-lista-mezcla'); if(!lista) return; lista.innerHTML = mezclaActual.map((i, idx) => `<li style="background: white; margin-bottom: 5px; padding: 5px 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd;">${i.cantidad} ${i.unidad} de ${i.nombre} <button class="btn-danger-small" style="padding: 2px 6px;" onclick="eliminarIngredienteSwal(event, ${idx})"><i class="ti ti-x"></i></button></li>`).join(''); costoActualReceta = mezclaActual.reduce((acc, curr) => acc + curr.costo_parcial, 0); document.getElementById('swal-costo-vivo').innerText = formatoMoneda(costoActualReceta); actualizarPrecioSwal(); }
+        function eliminarIngredienteSwal(e, idx) { if(e) e.preventDefault(); mezclaActual.splice(idx, 1); renderizarMezclaSwal(); }
+        function actualizarPrecioSwal() { const margen = parseFloat(document.getElementById('swal-margen').value) || 0; document.getElementById('swal-precio-venta').value = (costoActualReceta * (1 + (margen / 100))).toFixed(2); }
+
+        async function carRec() {
+            const recetas = await (await fetch('/api/productos/recetas-detalle', { headers: getHeaders(false) })).json(); recetasGuardadasData = recetas; const lista = document.getElementById('lista-recetas-guardadas');
+            lista.innerHTML = `<li class="encabezado-tabla"><div style="flex: 2; min-width: 180px;">Trago</div><div style="flex: 1; min-width: 100px;">Costo</div><div style="flex: 1; min-width: 100px;">Venta</div><div style="flex: 1; min-width: 100px;">Ganancia</div><div style="flex: 0.5; text-align: right;">Acciones</div></li>`;
+            recetas.forEach(r => {
+                const ingredientesStr = r.ingredientes.map(i => `${i.cantidad} ${i.unidad_medida} de ${i.nombre}`).join(' • ');
+                lista.innerHTML += `
+                <li class="fila-inventario" style="border-left: 5px solid #f39c12;">
+                    <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">🍸 ${r.nombre}</strong></div>
+                    <div style="flex: 1; min-width: 100px; color: #e74c3c; font-weight: bold; font-size: 1em;">$${formatoMoneda(r.costoTotal)}</div>
+                    <div style="flex: 1; min-width: 100px; color: #2980b9; font-weight: bold; font-size: 1em;">$${formatoMoneda(r.precio_venta)}</div>
+                    <div style="flex: 1; min-width: 100px; color: #27ae60; font-weight: bold; font-size: 1em;">$${formatoMoneda(r.ganancia)}</div>
+                    <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
+                        <button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="abrirModalReceta(${r.id})" title="Ver / Editar"><i class="ti ti-eye"></i></button>
+                        <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarRecetaConfirm(${r.id}, '${r.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="ti ti-x"></i></button>
+                    </div>
+                    <div style="width: 100%; font-size: 0.85em; color: #7f8c8d; margin-top: 8px;"><i class="ti ti-blender"></i> ${ingredientesStr}</div>
+                </li>`;
+            });
         }
-        function quitarDeMezcla(index) { mezclaActual.splice(index, 1); actualizarVistaMezcla(); }
+        async function borrarRecetaConfirm(id, nombre) { if ((await Swal.fire({ title: `¿Borrar receta de ${nombre}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Borrar' })).isConfirmed) { await fetch(`/api/productos/recetas/${id}`, { method: 'DELETE', headers: getHeaders(false) }); carRec(); carTra(); Toast.fire({ icon: 'success', title: 'Eliminada' }); } }
+
+        // --- COTIZADOR ---
+        async function carTra() { const s = document.getElementById('select-tragos-evento'); s.innerHTML = '<option value="">Seleccionar trago para el menú...</option>'; (await (await fetch('/api/productos/tragos', { headers: getHeaders(false) })).json()).forEach(t => s.innerHTML += `<option value="${t.id}">${t.nombre}</option>`); }
+        function agregarTragoAlEvento() { const s = document.getElementById('select-tragos-evento'); if (!s.value) return; if (tragosEventoActual.find(t => t.trago_id == s.value)) return Swal.fire('Atención', 'Este trago ya está.', 'info'); tragosEventoActual.push({ trago_id: s.value, nombre: s.options[s.selectedIndex].text }); s.value = ''; actEv(); }
+        function actEv() { document.getElementById('lista-tragos-evento').innerHTML = tragosEventoActual.map((i, idx) => `<li>🍹 ${i.nombre} <button class="btn-danger-small" onclick="tragosEventoActual.splice(${idx}, 1); actEv();"><i class="ti ti-x"></i></button></li>`).join(''); }
         
-        async function guardarReceta() {
-            const nombreTrago = document.getElementById('nombre-trago').value;
-            if (!nombreTrago || mezclaActual.length === 0) return alert("Faltan datos.");
-            try {
-                // CAMBIO A RUTA RELATIVA
-                const res = await fetch('/api/recetas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nombreTrago, ingredientes: mezclaActual }) });
-                if (res.ok) { alert("¡Receta guardada!"); document.getElementById('nombre-trago').value = ''; mezclaActual = []; actualizarVistaMezcla(); cargarTragosParaEvento(); cargarRecetasGuardadas(); }
-            } catch (error) { console.error("Error:", error); }
-        }
-
-        async function cargarRecetasGuardadas() {
-            try {
-                // CAMBIO A RUTA RELATIVA
-                const res = await fetch('/api/recetas-detalle');
-                const recetas = await res.json();
-                const lista = document.getElementById('lista-recetas-guardadas');
-                lista.innerHTML = '';
-                
-                recetas.forEach(receta => {
-                    let ingredientesHTML = receta.ingredientes.map(ing => `<li>• ${ing.cantidad} ${ing.unidad_medida} de ${ing.nombre}</li>`).join('');
-                    lista.innerHTML += `
-                        <li style="border-left: 5px solid #f39c12;">
-                            <strong style="font-size: 1.3em; color: #2c3e50;">🍸 ${receta.nombre}</strong>
-                            <span style="color: #e74c3c; font-weight: bold; font-size: 1.3em; margin: 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px;">Costo total: $${receta.costoTotal}</span>
-                            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9em; color: #555;">
-                                ${ingredientesHTML}
-                            </ul>
-                        </li>`;
-                });
-            } catch (error) { console.error("Error:", error); }
-        }
-
-        // --- EVENTOS ---
-        async function cargarTragosParaEvento() {
-            try {
-                // CAMBIO A RUTA RELATIVA
-                const res = await fetch('/api/tragos');
-                const tragos = await res.json();
-                const select = document.getElementById('select-tragos-evento'); select.innerHTML = '<option value="">Seleccioná un trago...</option>';
-                tragos.forEach(trago => { select.innerHTML += `<option value="${trago.id}">${trago.nombre}</option>`; });
-            } catch (error) { console.error("Error:", error); }
-        }
-
-        function agregarTragoAlEvento() {
-            const select = document.getElementById('select-tragos-evento'); const cant = document.getElementById('cantidad-servicios').value;
-            if (!select.value || !cant) return;
-            tragosEventoActual.push({ trago_id: select.value, nombre: select.options[select.selectedIndex].text, cantidad: parseInt(cant) });
-            document.getElementById('cantidad-servicios').value = ''; select.value = ''; actualizarVistaEvento();
-        }
-        function actualizarVistaEvento() {
-            const ul = document.getElementById('lista-tragos-evento'); ul.innerHTML = ''; 
-            tragosEventoActual.forEach((item, index) => { ul.innerHTML += `<li>${item.cantidad}x ${item.nombre} <button class="btn-danger-small" onclick="quitarTragoEvento(${index})">X</button></li>`; });
-        }
-        function quitarTragoEvento(index) { tragosEventoActual.splice(index, 1); actualizarVistaEvento(); }
-
         async function calcularEvento() {
-            if (tragosEventoActual.length === 0) return alert("Agregá tragos al menú.");
+            const personas = parseInt(document.getElementById('evento-personas').value), consumo = parseInt(document.getElementById('evento-consumo').value);
+            if (!personas || personas <= 0) return Swal.fire('Atención', 'Ingresá los invitados.', 'warning');
+            if (!tragosEventoActual.length) return Swal.fire('Atención', 'Agregá un trago al menú.', 'info');
+
+            const res = await fetch('/api/productos/calcular-evento', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ tragos_evento: tragosEventoActual, personas, consumo_por_persona: consumo }) });
+            if (res.ok) {
+                const data = await res.json(); document.getElementById('resultado-evento').style.display = 'block';
+                costoNetoEventoActual = parseFloat(data.costoTotalEvento);
+                comprasEventoActual = data.listaCompras; 
+
+                document.getElementById('detalle-logistica').innerHTML = `
+                    <div class="caja-costo"><p style="margin: 0; color: #555;">Costo Neto Insumos</p><h2>$ <span id="cotizador-costo-neto">${formatoMoneda(costoNetoEventoActual)}</span></h2></div>
+                    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border: 1px solid #ffeeba;">
+                        <div style="flex: 1; min-width: 150px;"><label style="font-weight: bold; color: #856404; display: block; margin-bottom: 5px;">Añadir Margen (%)</label><input type="number" id="cotizador-margen" value="25" style="width: 100px; padding: 10px; border: 1px solid #ffeeba; border-radius: 4px; font-size: 1.2em; font-weight: bold;" oninput="actualizarTotalCotizador()"></div>
+                        <div style="flex: 1; text-align: right; min-width: 150px;"><p style="margin: 0; color: #856404; font-size: 0.9em;">Presupuesto Final</p><h3 style="margin: 0; color: #d35400; font-size: 2.2em;">$ <span id="cotizador-total-cobrar">0,00</span></h3></div>
+                    </div>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+                        <div style="flex: 1; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd;"><h4 style="margin-top:0; color: #2980b9;"><i class="ti ti-glass-cocktail"></i> Despacho Estimado</h4><p style="margin: 5px 0;">Total de tragos: <strong>${data.totalTragos}</strong></p><p style="margin: 5px 0; font-size: 0.9em; color: #666;">Aprox <strong>${data.tragosPorReceta}</strong> unidades de cada trago.</p></div>
+                        <div style="flex: 1; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd;"><h4 style="margin-top:0; color: #8e44ad;"><i class="ti ti-users"></i> Logística Sugerida</h4><p style="margin: 5px 0;">👉 <strong>${data.logistica.barras}</strong> Barras (1 c/80p)</p><p style="margin: 5px 0;">👉 <strong>${data.logistica.bartenders}</strong> Bartenders (1 c/40p)</p><p style="margin: 5px 0;">👉 <strong>${data.logistica.runners}</strong> Runners (1 c/100p)</p></div>
+                    </div>
+                    <button class="btn-accion" style="background-color: #9b59b6; width: 100%;" onclick="prepararAgendarDesdeCotizador()"><i class="ti ti-calendar-plus"></i> Generar Evento en Agenda (Descuenta Stock)</button>
+                `;
+                document.getElementById('lista-compras-evento').innerHTML = data.listaCompras.map(i => `<li><strong>${i.cantidadTotal.toFixed(2)} ${i.unidad}</strong> de ${i.ingrediente}</li>`).join('');
+                document.getElementById('resultado-evento').scrollIntoView({ behavior: 'smooth' }); actualizarTotalCotizador();
+            }
+        }
+        function actualizarTotalCotizador() { totalCobrarEventoActual = costoNetoEventoActual * (1 + ((parseFloat(document.getElementById('cotizador-margen').value) || 0) / 100)); document.getElementById('cotizador-total-cobrar').innerText = formatoMoneda(totalCobrarEventoActual); }
+        function prepararAgendarDesdeCotizador() { agendarDesdeCotizador(totalCobrarEventoActual.toFixed(2)); }
+        function exportarPDF() { const e = document.getElementById('resultado-evento'); const b = e.querySelector('button'); b.style.display = 'none'; html2pdf().set({ margin: 15, filename: 'Cotizacion.pdf' }).from(e).save().then(() => b.style.display = 'flex'); }
+
+        // --- PLANTILLAS ---
+        async function cargarPlantillasVisuales() {
             try {
-                // CAMBIO A RUTA RELATIVA
-                const res = await fetch('/api/calcular-evento', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tragos_evento: tragosEventoActual }) });
-                const data = await res.json();
-
+                const res = await fetch('/api/productos/plantillas', { headers: getHeaders(false) });
                 if (res.ok) {
-                    document.getElementById('resultado-evento').style.display = 'block';
-                    
-                    document.getElementById('detalle-logistica').innerHTML = `
-                        <div class="caja-costo">
-                            <p style="margin: 0; font-size: 1.2em; color: #555;">Costo de Insumos (Neto)</p>
-                            <h2>$ ${data.costoTotalEvento}</h2>
-                        </div>
-                        
-                        <p style="font-size: 1.1em;">🍸 Total de servicios a despachar: <strong>${data.totalTragos} tragos</strong></p>
-                        
-                        <h4 style="border-bottom: 2px solid #ccc; padding-bottom: 5px; color: #2c3e50; margin-top: 20px;">👥 Equipo de Trabajo Sugerido</h4>
-                        <p style="margin: 5px 0;">👉 <strong>${data.logistica.bartenders}</strong> Bartenders (1 cada 50 tragos)</p>
-                        <p style="margin: 5px 0;">👉 <strong>${data.logistica.runners}</strong> Runners / Repositores de hielo e insumos</p>
-
-                        <h4 style="border-bottom: 2px solid #ccc; padding-bottom: 5px; color: #2c3e50; margin-top: 20px;">🏗️ Estructura Física</h4>
-                        <p style="margin: 5px 0;">👉 <strong>${data.logistica.barras}</strong> Estaciones de Barra (1 cada 100 tragos)</p>
-                    `;
-
-                    const ul = document.getElementById('lista-compras-evento'); ul.innerHTML = '';
-                    data.listaCompras.forEach(item => ul.innerHTML += `<li><strong>${item.cantidadTotal} ${item.unidad}</strong> de ${item.ingrediente}</li>`);
+                    plantillasGuardadas = await res.json();
+                    const lista = document.getElementById('lista-plantillas');
+                    lista.innerHTML = `<li class="encabezado-tabla"><div style="flex: 1.5; min-width: 150px;">Nombre de Plantilla</div><div style="flex: 3; min-width: 250px;">Resumen del Menú</div><div style="flex: 1; text-align: right;">Acciones</div></li>`;
+                    if (plantillasGuardadas.length === 0) { lista.innerHTML += '<li style="padding: 15px; color: #7f8c8d;">No hay plantillas guardadas aún.</li>'; return; }
+                    plantillasGuardadas.forEach(p => {
+                        let tragosObj = typeof p.tragos === 'string' ? JSON.parse(p.tragos) : p.tragos; let resumen = tragosObj.map(t => t.nombre).join(' • '); 
+                        lista.innerHTML += `
+                        <li class="fila-inventario" style="border-left: 5px solid #34495e;">
+                            <div style="flex: 1.5; min-width: 150px;"><strong style="font-size: 1.1em; color: #2c3e50;">📋 ${p.nombre}</strong></div>
+                            <div style="flex: 3; min-width: 250px; color: #666; font-size: 0.9em;"><i class="ti ti-glass-full"></i> ${resumen}</div>
+                            <div style="display: flex; gap: 10px; justify-content: flex-end; flex: 1;">
+                                <button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="abrirModalPlantilla(${p.id})" title="Ver / Editar"><i class="ti ti-eye"></i></button>
+                                <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarPlantilla(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+                                <button class="btn-accion" style="background-color: #3498db; padding: 6px 12px; font-size: 0.9em; box-shadow: none;" onclick="cargarPlantillaEnCotizador(${p.id})"><i class="ti ti-download"></i> Usar</button>
+                            </div>
+                        </li>`;
+                    });
                 }
-            } catch (error) { console.error("Error:", error); }
+            } catch (e) { console.error(e); }
         }
 
-        function exportarPDF() {
-            const elemento = document.getElementById('resultado-evento'); const botonPDF = elemento.querySelector('button'); botonPDF.style.display = 'none'; 
-            html2pdf().set({ margin: 15, filename: 'Cotizacion_BarManager.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(elemento).save().then(() => { botonPDF.style.display = 'block'; }); 
+        async function abrirModalPlantilla(id) {
+            const p = plantillasGuardadas.find(pl => pl.id === id); if (!p) return;
+            tragosPlantillaActual = typeof p.tragos === 'string' ? JSON.parse(p.tragos) : p.tragos;
+            const opcionesTragos = Array.from(document.getElementById('select-tragos-evento').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
+            const { value: formValues } = await Swal.fire({ title: '<i class="ti ti-eye"></i> Ver / Editar Plantilla', width: '600px', html: `<div style="text-align: left; font-size: 0.9em;"><label style="font-weight: bold;">Nombre de la Plantilla</label><input id="swal-plantilla-nombre" class="swal2-input" value="${p.nombre}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd; display: flex; gap: 10px; align-items: flex-end;"><div style="flex: 1;"><label style="font-weight: bold;">Agregar Trago al Menú</label><select id="swal-plantilla-trago" class="swal2-input" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;"><option value="">Seleccionar...</option>${opcionesTragos}</select></div><button class="btn-accion" style="background-color: #34495e; padding: 12px 15px; margin-top: 5px;" onclick="agregarTragoPlantillaSwal(event)"><i class="ti ti-plus"></i> Añadir</button></div><h4 style="margin: 15px 0 5px 0;">Menú del Evento:</h4><ul id="swal-lista-plantilla" class="lista-mezcla" style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; padding: 5px;"></ul></div>`, showCancelButton: true, confirmButtonColor: '#3498db', cancelButtonColor: '#e74c3c', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Cambios', focusConfirm: false, didOpen: () => { renderizarTragosPlantillaSwal(); }, preConfirm: () => { const n = document.getElementById('swal-plantilla-nombre').value; if (!n || !tragosPlantillaActual.length) { Swal.showValidationMessage('Completá el nombre y dejá al menos un trago.'); return false; } return { nombre: n, tragos: tragosPlantillaActual }; } });
+            if (formValues) { if ((await fetch(`/api/productos/plantillas/${id}`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { Toast.fire({ icon: 'success', title: 'Plantilla actualizada' }); cargarPlantillasVisuales(); } }
+        }
+        function agregarTragoPlantillaSwal(e) { if(e) e.preventDefault(); const s = document.getElementById('swal-plantilla-trago'); if (!s.value) return; if (tragosPlantillaActual.find(t => t.trago_id == s.value)) { Swal.showValidationMessage('Este trago ya está en la plantilla.'); return; } tragosPlantillaActual.push({ trago_id: s.value, nombre: s.options[s.selectedIndex].text }); s.value = ''; renderizarTragosPlantillaSwal(); }
+        function renderizarTragosPlantillaSwal() { const lista = document.getElementById('swal-lista-plantilla'); if(!lista) return; lista.innerHTML = tragosPlantillaActual.map((i, idx) => `<li style="background: white; margin-bottom: 5px; padding: 5px 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd;">🍹 ${i.nombre} <button class="btn-danger-small" style="padding: 2px 6px;" onclick="eliminarTragoPlantillaSwal(event, ${idx})"><i class="ti ti-x"></i></button></li>`).join(''); }
+        function eliminarTragoPlantillaSwal(e, idx) { if(e) e.preventDefault(); tragosPlantillaActual.splice(idx, 1); renderizarTragosPlantillaSwal(); }
+        async function borrarPlantilla(id, nombre) { if ((await Swal.fire({ title: `¿Borrar plantilla "${nombre}"?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Borrar' })).isConfirmed) { await fetch(`/api/productos/plantillas/${id}`, { method: 'DELETE', headers: getHeaders(false) }); cargarPlantillasVisuales(); Toast.fire({ icon: 'success', title: 'Plantilla eliminada' }); } }
+        function cargarPlantillaEnCotizador(id) { const p = plantillasGuardadas.find(p => p.id == id); if (p) { tragosEventoActual = typeof p.tragos === 'string' ? JSON.parse(p.tragos) : p.tragos; actEv(); document.getElementById('form-cotizador').style.display = 'block'; document.getElementById('resultado-evento').style.display = 'none'; document.getElementById('form-cotizador').scrollIntoView({ behavior: 'smooth' }); Toast.fire({ icon: 'success', title: `Plantilla cargada` }); } }
+        async function guardarComoPlantilla() { if (!tragosEventoActual.length) return Swal.fire('Atención', 'Armá un menú primero.', 'warning'); let inputOptions = { 'nuevo': '✨ Crear Nueva Plantilla' }; plantillasGuardadas.forEach(p => inputOptions[p.id] = `🔄 Sobreescribir: ${p.nombre}`); const { value: opcionElegida } = await Swal.fire({ title: 'Guardar Menú en Plantillas', input: 'select', inputOptions: inputOptions, showCancelButton: true, confirmButtonText: 'Siguiente' }); if (!opcionElegida) return; if (opcionElegida === 'nuevo') { const { value: nombre } = await Swal.fire({ title: 'Nombre de la nueva plantilla', input: 'text', inputPlaceholder: 'Ej: Casamiento Premium...', showCancelButton: true }); if (nombre && nombre.trim() !== '') { await fetch('/api/productos/plantillas', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre, tragos: tragosEventoActual }) }); Swal.fire('¡Guardado!', '', 'success'); cargarPlantillasVisuales(); } } else { const p = plantillasGuardadas.find(pl => pl.id == opcionElegida); await fetch(`/api/productos/plantillas/${opcionElegida}`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify({ nombre: p.nombre, tragos: tragosEventoActual }) }); Swal.fire('¡Actualizado!', 'La plantilla fue sobreescrita con el menú actual.', 'success'); cargarPlantillasVisuales(); } }
+
+        // --- AGENDA ---
+        async function agendarDesdeCotizador(costoTotalCobrar) {
+            const { value: formValues } = await Swal.fire({ title: 'Agendar este Evento', html: '<input id="swal-cliente" class="swal2-input" placeholder="Nombre del Cliente"><input type="date" id="swal-fecha" class="swal2-input">', focusConfirm: false, showCancelButton: true, confirmButtonText: 'Agendar', preConfirm: () => { return [document.getElementById('swal-cliente').value, document.getElementById('swal-fecha').value] } });
+            if (formValues && formValues[0] && formValues[1]) { 
+                await fetch('/api/agenda', { 
+                    method: 'POST', headers: getHeaders(), 
+                    body: JSON.stringify({ cliente: formValues[0], fecha: formValues[1], cotizacion_total: costoTotalCobrar, detalles: 'Cotización generada automáticamente desde planificador.', insumos: comprasEventoActual }) 
+                }); 
+                Swal.fire('¡Agendado!', 'El evento ya figura en tu Agenda y se contempló en el Análisis de Stock.', 'success'); 
+                carAge(); cargarDashboard();
+            }
+        }
+        
+        async function carAge() {
+            const evs = await (await fetch('/api/agenda', { headers: getHeaders(false) })).json(); const l = document.getElementById('lista-agenda');
+            l.innerHTML = `<li class="encabezado-tabla"><div style="flex: 2; min-width: 150px;">Cliente</div><div style="flex: 1; min-width: 120px;">Fecha</div><div style="flex: 1.5; min-width: 150px;">Dirección</div><div style="flex: 1; min-width: 120px;">Presupuesto</div><div style="flex: 0.5; text-align: right;">Acciones</div></li>`;
+            if (!evs.length) { l.innerHTML += '<li style="padding: 15px; color: #7f8c8d;">No hay eventos agendados aún.</li>'; return; }
+            evs.forEach(e => {
+                l.innerHTML += `
+                <li class="fila-inventario" style="border-left: 5px solid #9b59b6;">
+                    <div style="flex: 2; min-width: 150px;"><strong style="font-size: 1.1em; color: #2c3e50;">👤 ${e.cliente}</strong></div>
+                    <div style="flex: 1; min-width: 120px; color: #e67e22; font-weight: bold; font-size: 0.9em;"><i class="ti ti-calendar-event"></i> ${new Date(e.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</div>
+                    <div style="flex: 1.5; min-width: 150px; color: #666; font-size: 0.9em;"><i class="ti ti-map-pin"></i> ${e.direccion || 'Sin definir'}</div>
+                    <div style="flex: 1; min-width: 120px; color: #27ae60; font-weight: bold; font-size: 1em;">$${formatoMoneda(e.cotizacion_total)}</div>
+                    <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
+                        <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarAgendaConfirm(${e.id}, '${e.cliente}')"><i class="ti ti-x"></i></button>
+                    </div>
+                    ${e.detalles ? `<div style="width: 100%; font-size: 0.85em; color: #7f8c8d; margin-top: 8px;"><i class="ti ti-notes"></i> <em>"${e.detalles}"</em></div>` : ''}
+                </li>`;
+            });
+        }
+        
+        async function borrarAgendaConfirm(id, cliente) { if ((await Swal.fire({ title: `¿Borrar evento de ${cliente}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Borrar' })).isConfirmed) { await fetch(`/api/agenda/${id}`, { method: 'DELETE', headers: getHeaders(false) }); carAge(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Evento eliminado' }); } }
+        
+        async function guardarEventoAgenda() {
+            const c = document.getElementById('agenda-cliente').value, f = document.getElementById('agenda-fecha').value, d = document.getElementById('agenda-direccion').value, ct = document.getElementById('agenda-cotizacion').value, det = document.getElementById('agenda-detalles').value;
+            if (!c || !f) return Swal.fire('Atención', 'El cliente y la fecha son obligatorios.', 'warning');
+            if ((await fetch('/api/agenda', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ cliente:c, fecha:f, direccion:d, cotizacion_total:ct, detalles:det, insumos: [] }) })).ok) { 
+                Swal.fire('¡Agendado!', 'Guardado.', 'success'); 
+                ['cliente','fecha','direccion','cotizacion','detalles'].forEach(id => document.getElementById(`agenda-${id}`).value = ''); 
+                toggleFormulario('form-agenda'); carAge(); cargarDashboard();
+            }
         }
 
-        window.onload = () => { cargarCategorias(); cargarTragosParaEvento(); cargarRecetasGuardadas(); };
+        window.onload = () => { cargarSelectCategorias(); cargarCategorias(); carTra(); carRec(); carAge(); cargarPlantillasVisuales(); cargarDashboard(); };
     </script>
 </body>
 </html>
