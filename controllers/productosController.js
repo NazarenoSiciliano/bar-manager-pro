@@ -5,11 +5,12 @@ const jwt = require('jsonwebtoken');
 // 📦 INVENTARIO Y CATEGORÍAS
 exports.getProductos = async (req, res) => {
     try {
-        // TRUCO: Creamos la columna stock si no existe en la base de datos
+        // TRUCO: Creamos las columnas stock y proveedor si no existen
         try { await db.query('ALTER TABLE Ingredientes ADD COLUMN stock DECIMAL(10,2) DEFAULT 0'); } catch(err) {}
+        try { await db.query('ALTER TABLE Ingredientes ADD COLUMN proveedor VARCHAR(255) DEFAULT ""'); } catch(err) {}
 
         const query = `
-            SELECT i.id, i.nombre, c.nombre as tipo, i.costo as precio, i.cantidad, i.unidad_medida, i.codigo_barras, i.stock 
+            SELECT i.id, i.nombre, c.nombre as tipo, i.costo as precio, i.cantidad, i.unidad_medida, i.codigo_barras, i.stock, i.proveedor 
             FROM Ingredientes i JOIN Categorias c ON i.categoria_id = c.id ORDER BY i.id DESC
         `;
         const [filas] = await db.query(query);
@@ -34,13 +35,13 @@ exports.crearCategoria = async (req, res) => {
 };
 
 exports.crearProducto = async (req, res) => {
-    const { nombre, tipo, precio, cantidad, unidad_medida, codigo_barras, stock } = req.body;
+    const { nombre, tipo, precio, cantidad, unidad_medida, codigo_barras, stock, proveedor } = req.body;
     try {
         let [categorias] = await db.query('SELECT id FROM Categorias WHERE nombre = ?', [tipo]);
         let categoria_id = categorias.length === 0 ? (await db.query('INSERT INTO Categorias (nombre) VALUES (?)', [tipo]))[0].insertId : categorias[0].id;
         
-        await db.query('INSERT INTO Ingredientes (nombre, categoria_id, cantidad, unidad_medida, costo, codigo_barras, stock) VALUES (?, ?, ?, ?, ?, ?, ?)', 
-            [nombre, categoria_id, cantidad, unidad_medida, precio, codigo_barras || null, stock || 0]);
+        await db.query('INSERT INTO Ingredientes (nombre, categoria_id, cantidad, unidad_medida, costo, codigo_barras, stock, proveedor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+            [nombre, categoria_id, cantidad, unidad_medida, precio, codigo_barras || null, stock || 0, proveedor || '']);
         res.status(201).json({ mensaje: 'Ingrediente creado' });
     } catch (e) { res.status(500).json({ error: 'Error al guardar', detalle: e.message }); }
 };
@@ -66,13 +67,13 @@ exports.cargaMasiva = async (req, res) => {
 
 exports.actualizarProducto = async (req, res) => {
     const { id } = req.params;
-    const { nombre, tipo, precio, cantidad, unidad_medida, codigo_barras, stock } = req.body;
+    const { nombre, tipo, precio, cantidad, unidad_medida, codigo_barras, stock, proveedor } = req.body;
     try {
         let [categorias] = await db.query('SELECT id FROM Categorias WHERE nombre = ?', [tipo]);
         let categoria_id = categorias.length === 0 ? (await db.query('INSERT INTO Categorias (nombre) VALUES (?)', [tipo]))[0].insertId : categorias[0].id;
         
-        await db.query('UPDATE Ingredientes SET nombre = ?, categoria_id = ?, costo = ?, cantidad = ?, unidad_medida = ?, codigo_barras = ?, stock = ? WHERE id = ?', 
-            [nombre, categoria_id, precio, cantidad, unidad_medida, codigo_barras || null, stock || 0, id]);
+        await db.query('UPDATE Ingredientes SET nombre = ?, categoria_id = ?, costo = ?, cantidad = ?, unidad_medida = ?, codigo_barras = ?, stock = ?, proveedor = ? WHERE id = ?', 
+            [nombre, categoria_id, precio, cantidad, unidad_medida, codigo_barras || null, stock || 0, proveedor || '', id]);
         res.json({ mensaje: 'Actualizado con éxito' });
     } catch (e) { res.status(500).json({ error: 'Error al actualizar', detalle: e.message }); }
 };
@@ -206,7 +207,7 @@ exports.eliminarAgenda = async (req, res) => {
     try { await db.query('DELETE FROM Agenda WHERE id = ?', [req.params.id]); res.json({ mensaje: 'Borrado' }); } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
 
-// 🔐 AUTENTICACIÓN Y REGISTRO (Se mantiene igual)
+// 🔐 AUTENTICACIÓN Y REGISTRO
 exports.login = async (req, res) => {
     const { email, password } = req.body;
     try {
@@ -244,7 +245,7 @@ exports.recuperarPassword = async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Error interno del servidor', detalle: e.message }); }
 };
 
-// 📋 PLANTILLAS DE EVENTOS (Se mantiene igual)
+// 📋 PLANTILLAS DE EVENTOS
 exports.getPlantillas = async (req, res) => {
     try {
         try { await db.query('CREATE TABLE IF NOT EXISTS Plantillas (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(255), tragos JSON)'); } catch(e) {}
