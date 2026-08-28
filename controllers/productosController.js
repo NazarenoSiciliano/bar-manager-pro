@@ -5,12 +5,11 @@ const jwt = require('jsonwebtoken');
 // 📦 INVENTARIO Y CATEGORÍAS
 exports.getProductos = async (req, res) => {
     try {
-        // TRUCO: El sistema intenta crear la columna por su cuenta. 
-        // Si ya existe (tira error), el catch lo ignora y sigue funcionando normal.
-        try { await db.query('ALTER TABLE Ingredientes ADD COLUMN codigo_barras VARCHAR(255)'); } catch(err) {}
+        // TRUCO: Creamos la columna stock si no existe en la base de datos
+        try { await db.query('ALTER TABLE Ingredientes ADD COLUMN stock DECIMAL(10,2) DEFAULT 0'); } catch(err) {}
 
         const query = `
-            SELECT i.id, i.nombre, c.nombre as tipo, i.costo as precio, i.cantidad, i.unidad_medida, i.codigo_barras 
+            SELECT i.id, i.nombre, c.nombre as tipo, i.costo as precio, i.cantidad, i.unidad_medida, i.codigo_barras, i.stock 
             FROM Ingredientes i JOIN Categorias c ON i.categoria_id = c.id ORDER BY i.id DESC
         `;
         const [filas] = await db.query(query);
@@ -35,13 +34,13 @@ exports.crearCategoria = async (req, res) => {
 };
 
 exports.crearProducto = async (req, res) => {
-    const { nombre, tipo, precio, cantidad, unidad_medida, codigo_barras } = req.body;
+    const { nombre, tipo, precio, cantidad, unidad_medida, codigo_barras, stock } = req.body;
     try {
         let [categorias] = await db.query('SELECT id FROM Categorias WHERE nombre = ?', [tipo]);
         let categoria_id = categorias.length === 0 ? (await db.query('INSERT INTO Categorias (nombre) VALUES (?)', [tipo]))[0].insertId : categorias[0].id;
         
-        await db.query('INSERT INTO Ingredientes (nombre, categoria_id, cantidad, unidad_medida, costo, codigo_barras) VALUES (?, ?, ?, ?, ?, ?)', 
-            [nombre, categoria_id, cantidad, unidad_medida, precio, codigo_barras || null]);
+        await db.query('INSERT INTO Ingredientes (nombre, categoria_id, cantidad, unidad_medida, costo, codigo_barras, stock) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+            [nombre, categoria_id, cantidad, unidad_medida, precio, codigo_barras || null, stock || 0]);
         res.status(201).json({ mensaje: 'Ingrediente creado' });
     } catch (e) { res.status(500).json({ error: 'Error al guardar', detalle: e.message }); }
 };
@@ -67,13 +66,13 @@ exports.cargaMasiva = async (req, res) => {
 
 exports.actualizarProducto = async (req, res) => {
     const { id } = req.params;
-    const { nombre, tipo, precio, cantidad, unidad_medida, codigo_barras } = req.body;
+    const { nombre, tipo, precio, cantidad, unidad_medida, codigo_barras, stock } = req.body;
     try {
         let [categorias] = await db.query('SELECT id FROM Categorias WHERE nombre = ?', [tipo]);
         let categoria_id = categorias.length === 0 ? (await db.query('INSERT INTO Categorias (nombre) VALUES (?)', [tipo]))[0].insertId : categorias[0].id;
         
-        await db.query('UPDATE Ingredientes SET nombre = ?, categoria_id = ?, costo = ?, cantidad = ?, unidad_medida = ?, codigo_barras = ? WHERE id = ?', 
-            [nombre, categoria_id, precio, cantidad, unidad_medida, codigo_barras || null, id]);
+        await db.query('UPDATE Ingredientes SET nombre = ?, categoria_id = ?, costo = ?, cantidad = ?, unidad_medida = ?, codigo_barras = ?, stock = ? WHERE id = ?', 
+            [nombre, categoria_id, precio, cantidad, unidad_medida, codigo_barras || null, stock || 0, id]);
         res.json({ mensaje: 'Actualizado con éxito' });
     } catch (e) { res.status(500).json({ error: 'Error al actualizar', detalle: e.message }); }
 };
@@ -117,13 +116,9 @@ exports.crearReceta = async (req, res) => {
     const { nombre, ingredientes, precio_venta } = req.body;
     try {
         try { await db.query('ALTER TABLE Tragos ADD COLUMN precio_venta DECIMAL(10,2) DEFAULT 0'); } catch(err) { }
-
         const [resultado] = await db.query('INSERT INTO Tragos (nombre, descripcion, precio_venta) VALUES (?, ?, ?)', [nombre, '', precio_venta || 0]);
         const trago_id = resultado.insertId;
-        
-        for (let item of ingredientes) {
-            await db.query('INSERT INTO Recetas (trago_id, ingrediente_id, cantidad) VALUES (?, ?, ?)', [trago_id, item.ingrediente_id, item.cantidad]);
-        }
+        for (let item of ingredientes) { await db.query('INSERT INTO Recetas (trago_id, ingrediente_id, cantidad) VALUES (?, ?, ?)', [trago_id, item.ingrediente_id, item.cantidad]); }
         res.status(201).json({ mensaje: 'Receta guardada' });
     } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
@@ -142,9 +137,7 @@ exports.actualizarReceta = async (req, res) => {
     try {
         await db.query('UPDATE Tragos SET nombre = ?, precio_venta = ? WHERE id = ?', [nombre, precio_venta || 0, id]);
         await db.query('DELETE FROM Recetas WHERE trago_id = ?', [id]);
-        for (let item of ingredientes) {
-            await db.query('INSERT INTO Recetas (trago_id, ingrediente_id, cantidad) VALUES (?, ?, ?)', [id, item.ingrediente_id, item.cantidad]);
-        }
+        for (let item of ingredientes) { await db.query('INSERT INTO Recetas (trago_id, ingrediente_id, cantidad) VALUES (?, ?, ?)', [id, item.ingrediente_id, item.cantidad]); }
         res.json({ mensaje: 'Receta actualizada con éxito' });
     } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
@@ -192,10 +185,7 @@ exports.calcularEvento = async (req, res) => {
             logistica: { bartenders, runners, barras },
             listaCompras: Object.values(listaCompras)
         });
-    } catch (e) { 
-        console.error("💥 ERROR EN COTIZADOR:", e); 
-        res.status(500).json({ error: 'Error', detalle: e.message }); 
-    }
+    } catch (e) { console.error("💥 ERROR EN COTIZADOR:", e); res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
 
 // 📅 AGENDA
@@ -206,7 +196,6 @@ exports.getAgenda = async (req, res) => {
 exports.crearAgenda = async (req, res) => {
     const { cliente, fecha, direccion, cotizacion_total, detalles, insumos } = req.body;
     try {
-        // Aseguramos que soporte la columna insumos
         await db.query('INSERT INTO Agenda (cliente, fecha, direccion, cotizacion_total, detalles, insumos) VALUES (?, ?, ?, ?, ?, ?)', 
             [cliente, fecha, direccion, cotizacion_total || 0, detalles || '', JSON.stringify(insumos || [])]);
         res.status(201).json({ mensaje: 'Agendado' });
@@ -217,7 +206,7 @@ exports.eliminarAgenda = async (req, res) => {
     try { await db.query('DELETE FROM Agenda WHERE id = ?', [req.params.id]); res.json({ mensaje: 'Borrado' }); } catch (e) { res.status(500).json({ error: 'Error', detalle: e.message }); }
 };
 
-// 🔐 AUTENTICACIÓN
+// 🔐 AUTENTICACIÓN Y REGISTRO (Se mantiene igual)
 exports.login = async (req, res) => {
     const { email, password } = req.body;
     try {
@@ -227,49 +216,35 @@ exports.login = async (req, res) => {
     } catch (e) { res.status(500).json({ error: 'Error en el servidor', detalle: e.message }); }
 };
 
-// 🔐 REGISTRO
 exports.registro = async (req, res) => {
     const { nombre, email, password } = req.body;
     if (!nombre || !email || !password) return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) return res.status(400).json({ error: 'Por favor, ingresá un correo electrónico válido' });
-
     if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
-
     try {
         const [existe] = await db.query('SELECT id FROM Usuarios WHERE email = ?', [email]);
         if (existe.length > 0) return res.status(400).json({ error: 'Ya existe una cuenta registrada con este correo' });
-
         const hash = await bcrypt.hash(password, 10);
         await db.query('INSERT INTO Usuarios (nombre, email, password_hash) VALUES (?, ?, ?)', [nombre, email, hash]);
         res.status(201).json({ mensaje: '¡Cuenta creada con éxito!' });
-    } catch (e) { 
-        console.error("💥 ERROR EN REGISTRO:", e);
-        res.status(500).json({ error: 'Error al registrar', detalle: e.message }); 
-    }
+    } catch (e) { res.status(500).json({ error: 'Error al registrar', detalle: e.message }); }
 };
 
 exports.recuperarPassword = async (req, res) => {
     const { email, nuevaPassword } = req.body;
     if (!email || !nuevaPassword) return res.status(400).json({ error: 'Completá todos los campos' });
     if (nuevaPassword.length < 6) return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
-
     try {
         const [existe] = await db.query('SELECT id FROM Usuarios WHERE email = ?', [email]);
         if (existe.length === 0) return res.status(404).json({ error: 'No encontramos ninguna cuenta con ese correo.' });
-
         const hash = await bcrypt.hash(nuevaPassword, 10);
         await db.query('UPDATE Usuarios SET password_hash = ? WHERE email = ?', [hash, email]);
-
         res.json({ mensaje: '¡Contraseña actualizada con éxito! Ya podés iniciar sesión.' });
-    } catch (e) {
-        console.error("💥 ERROR EN RECUPERAR PASSWORD:", e);
-        res.status(500).json({ error: 'Error interno del servidor', detalle: e.message });
-    }
+    } catch (e) { res.status(500).json({ error: 'Error interno del servidor', detalle: e.message }); }
 };
 
-// 📋 PLANTILLAS DE EVENTOS
+// 📋 PLANTILLAS DE EVENTOS (Se mantiene igual)
 exports.getPlantillas = async (req, res) => {
     try {
         try { await db.query('CREATE TABLE IF NOT EXISTS Plantillas (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(255), tragos JSON)'); } catch(e) {}
@@ -277,34 +252,23 @@ exports.getPlantillas = async (req, res) => {
         res.json(rows);
     } catch (e) { res.status(500).json({ error: 'Error al obtener plantillas', detalle: e.message }); }
 };
-
 exports.crearPlantilla = async (req, res) => {
     const { nombre, tragos } = req.body;
     if (!nombre || !tragos) return res.status(400).json({ error: 'Faltan datos' });
-
     try {
         try { await db.query('CREATE TABLE IF NOT EXISTS Plantillas (id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(255), tragos JSON)'); } catch(e) {}
         await db.query('INSERT INTO Plantillas (nombre, tragos) VALUES (?, ?)', [nombre, JSON.stringify(tragos)]);
         res.status(201).json({ mensaje: 'Plantilla guardada con éxito' });
     } catch (e) { res.status(500).json({ error: 'Error al guardar plantilla', detalle: e.message }); }
 };
-
 exports.eliminarPlantilla = async (req, res) => {
-    try { 
-        await db.query('DELETE FROM Plantillas WHERE id = ?', [req.params.id]); 
-        res.json({ mensaje: 'Plantilla eliminada' }); 
-    } catch (e) { res.status(500).json({ error: 'Error al eliminar', detalle: e.message }); }
+    try { await db.query('DELETE FROM Plantillas WHERE id = ?', [req.params.id]); res.json({ mensaje: 'Plantilla eliminada' }); } catch (e) { res.status(500).json({ error: 'Error al eliminar', detalle: e.message }); }
 };
-
 exports.actualizarPlantilla = async (req, res) => {
-    const { id } = req.params;
-    const { nombre, tragos } = req.body;
+    const { id } = req.params; const { nombre, tragos } = req.body;
     try {
-        if (tragos) {
-            await db.query('UPDATE Plantillas SET nombre = ?, tragos = ? WHERE id = ?', [nombre, JSON.stringify(tragos), id]);
-        } else {
-            await db.query('UPDATE Plantillas SET nombre = ? WHERE id = ?', [nombre, id]);
-        }
+        if (tragos) { await db.query('UPDATE Plantillas SET nombre = ?, tragos = ? WHERE id = ?', [nombre, JSON.stringify(tragos), id]); } 
+        else { await db.query('UPDATE Plantillas SET nombre = ? WHERE id = ?', [nombre, id]); }
         res.json({ mensaje: 'Plantilla actualizada' });
     } catch (e) { res.status(500).json({ error: 'Error al actualizar', detalle: e.message }); }
 };
