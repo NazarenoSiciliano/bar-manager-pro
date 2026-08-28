@@ -36,10 +36,11 @@ exports.getProductos = async (req, res) => {
         const [columnas] = await db.query("SHOW COLUMNS FROM Ingredientes");
         const nombresColumnas = columnas.map(c => c.Field);
         
-        if (!nombresColumnas.includes('stock')) await db.query('ALTER TABLE Ingredientes ADD COLUMN stock DECIMAL(10,2) DEFAULT 0');
-        if (!nombresColumnas.includes('proveedor')) await db.query('ALTER TABLE Ingredientes ADD COLUMN proveedor VARCHAR(255) DEFAULT ""');
-        if (!nombresColumnas.includes('a_granel')) await db.query('ALTER TABLE Ingredientes ADD COLUMN a_granel BOOLEAN DEFAULT FALSE');
-        if (!nombresColumnas.includes('codigo_barras')) await db.query('ALTER TABLE Ingredientes ADD COLUMN codigo_barras VARCHAR(255)');
+        // CORRECCIÓN: Usamos comillas simples ('') para los textos por defecto en SQL
+        if (!nombresColumnas.includes('stock')) await db.query("ALTER TABLE Ingredientes ADD COLUMN stock DECIMAL(10,2) DEFAULT 0");
+        if (!nombresColumnas.includes('proveedor')) await db.query("ALTER TABLE Ingredientes ADD COLUMN proveedor VARCHAR(255) DEFAULT ''");
+        if (!nombresColumnas.includes('a_granel')) await db.query("ALTER TABLE Ingredientes ADD COLUMN a_granel BOOLEAN DEFAULT FALSE");
+        if (!nombresColumnas.includes('codigo_barras')) await db.query("ALTER TABLE Ingredientes ADD COLUMN codigo_barras VARCHAR(255)");
 
         const query = `
             SELECT i.id, i.nombre, c.nombre as tipo, i.costo as precio, i.cantidad, i.unidad_medida, i.codigo_barras, i.stock, i.proveedor, i.a_granel 
