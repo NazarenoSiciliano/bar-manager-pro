@@ -60,7 +60,8 @@
         <h1>🍸 Bar Manager Pro</h1>
         <div class="nav-links">
             <button class="menu-btn activo" onclick="cambiarSeccion('sec-dashboard', this)"><i class="ti ti-layout-dashboard"></i> Inicio</button>
-            <button class="menu-btn" onclick="cambiarSeccion('sec-inventario', this)"><i class="ti ti-box"></i> Inventario</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-catalogo', this)"><i class="ti ti-list"></i> Catálogo</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-stock', this)"><i class="ti ti-building-warehouse"></i> Depósito</button>
             <button class="menu-btn" onclick="cambiarSeccion('sec-recetas', this)"><i class="ti ti-glass-cocktail"></i> Recetas</button>
             <button class="menu-btn" onclick="cambiarSeccion('sec-eventos', this)"><i class="ti ti-chart-bar"></i> Cotizador</button>
             <button class="menu-btn" onclick="cambiarSeccion('sec-agenda', this)"><i class="ti ti-calendar"></i> Agenda</button>
@@ -86,12 +87,12 @@
             </div>
         </div>
 
-        <!-- INVENTARIO -->
-        <div id="sec-inventario" class="seccion">
+        <!-- 1. CATÁLOGO (Insumos para crear recetas) -->
+        <div id="sec-catalogo" class="seccion">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                <h2 style="margin: 0;">Gestión de Inventario</h2>
+                <h2 style="margin: 0;">Catálogo de Insumos</h2>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn-accion" style="background-color: #2ecc71;" onclick="abrirModalCrearProducto()"><i class="ti ti-plus"></i> Nuevo Producto</button>
+                    <button class="btn-accion" style="background-color: #2ecc71;" onclick="abrirModalCrearProducto()"><i class="ti ti-plus"></i> Nuevo Insumo</button>
                     <button class="btn-accion" style="background-color: #34495e;" onclick="crearCategoria()"><i class="ti ti-folder-plus"></i> Nueva Categoría</button>
                     <label for="archivo-excel" class="btn-accion" style="background-color: #8e44ad; margin: 0; cursor: pointer;"><i class="ti ti-upload"></i> Importar Excel</label>
                     <input type="file" id="archivo-excel" accept=".xlsx, .xls" style="display: none;" onchange="importarExcel()">
@@ -100,12 +101,28 @@
 
             <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                 <strong style="white-space: nowrap;"><i class="ti ti-filter"></i> Filtrar por Categoría:</strong>
-                <select id="filtro-inventario" onchange="filtrarInventario()" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 1.1em;">
+                <select id="filtro-catalogo" onchange="filtrarVista('catalogo')" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 1.1em;">
                     <option value="">Todas las categorías</option>
                 </select>
             </div>
             
-            <ul id="lista-categorias" class="grid-productos" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"></ul>
+            <ul id="lista-catalogo" class="grid-productos" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"></ul>
+        </div>
+
+        <!-- 2. DEPÓSITO / STOCK (Físico y Proveedores) -->
+        <div id="sec-stock" class="seccion">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h2 style="margin: 0;">Control de Depósito y Proveedores</h2>
+            </div>
+
+            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <strong style="white-space: nowrap;"><i class="ti ti-filter"></i> Filtrar por Categoría:</strong>
+                <select id="filtro-stock" onchange="filtrarVista('stock')" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 1.1em;">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
+            
+            <ul id="lista-stock" class="grid-productos" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"></ul>
         </div>
 
         <!-- RECETAS -->
@@ -200,7 +217,6 @@
 
     <script>
         function formatoMoneda(numero) { return new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numero); }
-
         const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
 
         if (!localStorage.getItem('bar_token') && window.location.pathname.endsWith('index.html')) window.location.href = 'login.html';
@@ -213,11 +229,10 @@
             btn.classList.add('activo'); 
         }
 
-        function toggleFormulario(id) {
-            const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? 'block' : 'none';
-        }
+        function toggleFormulario(id) { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 
         // --- VARIABLES GLOBALES ---
+        let inventarioGlobal = []; // Guarda todos los datos (Catalogo y Stock)
         let mezclaActual = []; let tragosEventoActual = []; let plantillasGuardadas = [];
         let costoActualReceta = 0; let costoNetoEventoActual = 0; let totalCobrarEventoActual = 0;
         let recetaEditandoId = null; let recetasGuardadasData = []; let tragosPlantillaActual = [];
@@ -230,29 +245,201 @@
             return headers;
         }
 
+        // --- CARGA CENTRALIZADA DEL INVENTARIO ---
+        async function cargarDatosInventario() {
+            try {
+                const res = await fetch('/api/productos', { headers: getHeaders(false) }); 
+                inventarioGlobal = await res.json(); 
+                
+                // Actualizamos los selects de filtros
+                const resCat = await fetch('/api/categorias', { headers: getHeaders(false) }); 
+                const categorias = await resCat.json(); 
+                
+                const selCat = document.getElementById('filtro-catalogo');
+                const selStock = document.getElementById('filtro-stock');
+                selCat.innerHTML = '<option value="">Todas las categorías</option>'; 
+                selStock.innerHTML = '<option value="">Todas las categorías</option>'; 
+                categorias.forEach(c => { 
+                    selCat.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; 
+                    selStock.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; 
+                });
+
+                // Actualizamos el select de ingredientes para las recetas
+                const selIng = document.getElementById('select-ingredientes');
+                selIng.innerHTML = '<option value="">Seleccionar ingrediente...</option>'; 
+                inventarioGlobal.forEach(p => { selIng.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-formato="${p.cantidad}">${p.nombre} (en ${p.unidad_medida})</option>`; });
+
+                renderizarCatalogo();
+                renderizarStock();
+                cargarDashboard(); // Se actualiza por si cambió el stock
+            } catch (e) { console.error(e); }
+        }
+
+        function filtrarVista(tipo) {
+            const elegido = document.getElementById(`filtro-${tipo}`).value;
+            document.querySelectorAll(`#lista-${tipo} li:not(.encabezado-tabla)`).forEach(li => {
+                li.style.display = (elegido === '' || li.getAttribute('data-categoria') === elegido) ? 'flex' : 'none';
+            });
+        }
+
+        // --- RENDERIZAR CATÁLOGO (Solo datos para recetas) ---
+        function renderizarCatalogo() {
+            const lista = document.getElementById('lista-catalogo');
+            lista.innerHTML = `
+                <li class="encabezado-tabla">
+                    <div style="flex: 2; min-width: 180px;">Insumo / Producto</div><div style="flex: 1; min-width: 120px;">Categoría</div>
+                    <div style="flex: 1; min-width: 120px;">Formato Físico</div><div style="flex: 1; min-width: 100px;">Costo</div><div style="flex: 0.5; text-align: right;">Acciones</div>
+                </li>`;
+            inventarioGlobal.forEach(p => {
+                let iconoCodigo = p.codigo_barras ? '<i class="ti ti-barcode" title="Con Código de Barras" style="color: #3498db;"></i> ' : '';
+                lista.innerHTML += `
+                <li class="fila-inventario" data-categoria="${p.tipo}" style="border-left: 5px solid #3498db;">
+                    <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">${iconoCodigo}${p.nombre}</strong></div>
+                    <div style="flex: 1; min-width: 120px; color: #666; font-size: 0.9em;"><i class="ti ti-folder"></i> ${p.tipo}</div>
+                    <div style="flex: 1; min-width: 120px; color: #888; font-size: 0.9em;"><i class="ti ti-ruler-measure"></i> ${p.cantidad} ${p.unidad_medida}</div>
+                    <div style="flex: 1; min-width: 100px; color: #27ae60; font-weight: bold; font-size: 1em;">$${formatoMoneda(p.precio)}</div>
+                    <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
+                        <button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="editarCatalogo(${p.id})" title="Editar Catálogo"><i class="ti ti-pencil"></i></button>
+                        <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarProducto(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+                    </div>
+                </li>`;
+            });
+        }
+
+        // --- RENDERIZAR DEPÓSITO / STOCK (Solo datos de stock y proveedor) ---
+        function renderizarStock() {
+            const lista = document.getElementById('lista-stock');
+            lista.innerHTML = `
+                <li class="encabezado-tabla" style="background: #27ae60;">
+                    <div style="flex: 2; min-width: 180px;">Insumo / Producto</div><div style="flex: 1.5; min-width: 150px;">Proveedor</div>
+                    <div style="flex: 1; min-width: 120px;">Stock Físico</div><div style="flex: 0.5; text-align: right;">Acciones</div>
+                </li>`;
+            inventarioGlobal.forEach(p => {
+                let badgeStock = p.stock <= 0 ? `<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em;">Sin Stock</span>` : `${p.stock} Uds.`;
+                let badgeProv = p.proveedor ? `<i class="ti ti-truck"></i> ${p.proveedor}` : `<i class="ti ti-truck-off" style="opacity:0.5;"></i> S/D`;
+                
+                lista.innerHTML += `
+                <li class="fila-inventario" data-categoria="${p.tipo}" style="border-left: 5px solid ${p.stock <= 0 ? '#e74c3c' : '#27ae60'};">
+                    <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">${p.nombre}</strong><div style="font-size: 0.8em; color: #888;">Envase: ${p.cantidad} ${p.unidad_medida}</div></div>
+                    <div style="flex: 1.5; min-width: 150px; color: #666; font-size: 0.9em;">${badgeProv}</div>
+                    <div style="flex: 1; min-width: 120px; font-weight: bold; font-size: 1.1em; color: ${p.stock <= 0 ? '#e74c3c' : '#27ae60'};">${badgeStock}</div>
+                    <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
+                        <button class="btn-icon" style="font-size: 1.3em; color: #27ae60;" onclick="editarStock(${p.id})" title="Actualizar Stock"><i class="ti ti-refresh"></i></button>
+                    </div>
+                </li>`;
+            });
+        }
+
+        // --- FUNCIONES DE EDICIÓN DIVIDIDAS ---
+        async function editarCatalogo(id) {
+            const p = inventarioGlobal.find(x => x.id === id);
+            const opcionesCategoria = Array.from(document.getElementById('filtro-catalogo').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}" ${opt.value === p.tipo ? 'selected' : ''}>${opt.text}</option>`).join('');
+            
+            const { value: formValues } = await Swal.fire({ 
+                title: '<i class="ti ti-edit"></i> Editar Insumo', 
+                html: `
+                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
+                        <label style="font-weight: bold;">Código de Barras / QR</label>
+                        <input id="swal-edit-codigo" class="swal2-input" value="${p.codigo_barras || ''}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
+                        <label style="font-weight: bold;">Nombre</label>
+                        <input id="swal-edit-nombre" class="swal2-input" value="${p.nombre}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
+                        <label style="font-weight: bold;">Categoría</label>
+                        <select id="swal-edit-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">${opcionesCategoria}</select>
+                        <div style="display: flex; gap: 10px;">
+                            <div style="flex: 1;"><label style="font-weight: bold;">Formato</label><input id="swal-edit-cantidad" type="number" class="swal2-input" value="${p.cantidad}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
+                            <div style="flex: 1;"><label style="font-weight: bold;">Unidad</label><select id="swal-edit-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros" ${p.unidad_medida==='Litros'?'selected':''}>Litros (L)</option><option value="ml" ${p.unidad_medida==='ml'?'selected':''}>Mililitros (ml)</option><option value="Kg" ${p.unidad_medida==='Kg'?'selected':''}>Kilogramos (Kg)</option><option value="Gramos" ${p.unidad_medida==='Gramos'?'selected':''}>Gramos (g)</option><option value="Unidades" ${p.unidad_medida==='Unidades'?'selected':''}>Unidades (u)</option></select></div>
+                        </div>
+                        <label style="font-weight: bold;">Costo Unitario ($)</label>
+                        <input id="swal-edit-precio" type="number" class="swal2-input" value="${p.precio}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
+                    </div>
+                `, 
+                showCancelButton: true, confirmButtonColor: '#3498db', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar', focusConfirm: false, 
+                preConfirm: () => { 
+                    return { 
+                        nombre: document.getElementById('swal-edit-nombre').value, tipo: document.getElementById('swal-edit-tipo').value, cantidad: parseFloat(document.getElementById('swal-edit-cantidad').value), unidad_medida: document.getElementById('swal-edit-unidad').value, precio: parseFloat(document.getElementById('swal-edit-precio').value), codigo_barras: document.getElementById('swal-edit-codigo').value, 
+                        stock: p.stock, proveedor: p.proveedor // Conservamos lo que no tocamos
+                    } 
+                } 
+            });
+            if (formValues) { if ((await fetch(`/api/productos/${id}`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarDatosInventario(); Toast.fire({ icon: 'success', title: 'Catálogo Actualizado' }); } }
+        }
+
+        async function editarStock(id) {
+            const p = inventarioGlobal.find(x => x.id === id);
+            const { value: formValues } = await Swal.fire({ 
+                title: '<i class="ti ti-building-warehouse"></i> Actualizar Stock', 
+                html: `
+                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
+                        <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ddd;">
+                            <strong>Insumo:</strong> ${p.nombre}<br><strong>Envase:</strong> ${p.cantidad} ${p.unidad_medida}
+                        </div>
+                        <label style="font-weight: bold;">Proveedor / Distribuidora</label>
+                        <input id="swal-edit-proveedor" class="swal2-input" value="${p.proveedor || ''}" placeholder="Ej. Mayorista El Sol" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #8e44ad;">
+                        <label style="font-weight: bold;">Cantidad Física en Depósito (Botellas/Cajas)</label>
+                        <input id="swal-edit-stock" type="number" class="swal2-input" value="${p.stock || 0}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box; border-left: 4px solid #27ae60;">
+                    </div>
+                `, 
+                showCancelButton: true, confirmButtonColor: '#27ae60', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Stock', focusConfirm: false, 
+                preConfirm: () => { 
+                    return { 
+                        stock: parseFloat(document.getElementById('swal-edit-stock').value), proveedor: document.getElementById('swal-edit-proveedor').value,
+                        nombre: p.nombre, tipo: p.tipo, cantidad: p.cantidad, unidad_medida: p.unidad_medida, precio: p.precio, codigo_barras: p.codigo_barras // Conservamos el resto
+                    } 
+                } 
+            });
+            if (formValues) { if ((await fetch(`/api/productos/${id}`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarDatosInventario(); Toast.fire({ icon: 'success', title: 'Stock Actualizado' }); } }
+        }
+
+        async function borrarProducto(id, nombre) {
+            if (!(await Swal.fire({ title: `¿Borrar "${nombre}" del sistema?`, text: 'Se eliminará del catálogo y del stock', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Sí, borrar' })).isConfirmed) return;
+            if ((await fetch(`/api/productos/${id}`, { method: 'DELETE', headers: getHeaders(false) })).ok) { cargarDatosInventario(); Toast.fire({ icon: 'success', title: 'Eliminado' }); }
+        }
+
+        async function abrirModalCrearProducto() {
+            const opcionesCategoria = Array.from(document.getElementById('filtro-catalogo').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
+            const { value: formValues } = await Swal.fire({ 
+                title: '<i class="ti ti-plus"></i> Nuevo Insumo', 
+                html: `
+                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
+                        <label style="font-weight: bold;">Código de Barras / QR</label>
+                        <input id="swal-crear-codigo" class="swal2-input" placeholder="Clickeá y escaneá con pistola o cámara" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
+                        <label style="font-weight: bold;">Nombre (Ej: Jugo Cepita naranja 1L)</label>
+                        <input id="swal-crear-nombre" class="swal2-input" placeholder="Nombre completo" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
+                        <label style="font-weight: bold;">Categoría</label>
+                        <select id="swal-crear-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="">Seleccionar categoría...</option>${opcionesCategoria}</select>
+                        <div style="display: flex; gap: 10px;">
+                            <div style="flex: 1;"><label style="font-weight: bold;">Formato del envase</label><input id="swal-crear-cantidad" type="number" class="swal2-input" placeholder="Ej. 1000" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
+                            <div style="flex: 1;"><label style="font-weight: bold;">Unidad de medida</label><select id="swal-crear-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros">Litros (L)</option><option value="ml">Mililitros (ml)</option><option value="Kg">Kilogramos (Kg)</option><option value="Gramos">Gramos (g)</option><option value="Unidades">Unidades (u)</option></select></div>
+                        </div>
+                        <label style="font-weight: bold;">Costo Unitario ($)</label>
+                        <input id="swal-crear-precio" type="number" class="swal2-input" placeholder="Ej. 1855" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
+                    </div>
+                `, 
+                showCancelButton: true, confirmButtonColor: '#2ecc71', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar', focusConfirm: false, 
+                preConfirm: () => { 
+                    const n = document.getElementById('swal-crear-nombre').value, t = document.getElementById('swal-crear-tipo').value, c = parseFloat(document.getElementById('swal-crear-cantidad').value), u = document.getElementById('swal-crear-unidad').value, p = parseFloat(document.getElementById('swal-crear-precio').value); 
+                    if (!n || !t || isNaN(c) || isNaN(p)) { Swal.showValidationMessage('Completá los campos obligatorios'); return false; } 
+                    return { nombre: n, tipo: t, cantidad: c, unidad_medida: u, precio: p, codigo_barras: document.getElementById('swal-crear-codigo').value, stock: 0, proveedor: '' }; 
+                } 
+            });
+            if (formValues) { try { if ((await fetch('/api/productos', { method: 'POST', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarDatosInventario(); Toast.fire({ icon: 'success', title: 'Producto guardado' }); } } catch (e) { console.error(e); } }
+        }
+
+        async function crearCategoria() { const { value: nombre } = await Swal.fire({ title: 'Nueva Categoría', input: 'text', inputLabel: 'Nombre de la categoría', showCancelButton: true, confirmButtonColor: '#2ecc71', confirmButtonText: 'Crear' }); if (!nombre || nombre.trim() === '') return; if ((await fetch('/api/categorias', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre }) })).ok) { Toast.fire({ icon: 'success', title: 'Categoría agregada' }); cargarDatosInventario(); } }
+        function importarExcel() { const fileInput = document.getElementById('archivo-excel'); if (!fileInput.files.length) return Swal.fire('Atención', 'Seleccioná un archivo Excel.', 'warning'); const reader = new FileReader(); reader.onload = async (e) => { const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'}); const sheet = workbook.Sheets[workbook.SheetNames[0]]; const jsonData = XLSX.utils.sheet_to_json(sheet); const productos = jsonData.map(row => ({ nombre: row.Nombre || row.nombre, tipo: row.Categoria || row.categoria || "Otros", cantidad: parseFloat(row.Cantidad || row.cantidad || 1), unidad_medida: row.Unidad || row.unidad || "Unidades", precio: parseFloat(row.Precio || row.precio || 0) })); try { Swal.fire({ title: 'Importando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } }); if ((await fetch('/api/productos/bulk', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ productos }) })).ok) { Swal.fire('¡Listo!', `Importados.`, 'success'); fileInput.value = ''; cargarDatosInventario(); } else Swal.fire("Error", "Error en el servidor.", "error"); } catch (error) { console.error(error); } }; reader.readAsArrayBuffer(fileInput.files[0]); }
+
         // --- DASHBOARD (INICIO) ---
         async function cargarDashboard() {
             try {
                 const resAge = await fetch('/api/agenda', { headers: getHeaders(false) }); const agenda = await resAge.json();
-                const resInv = await fetch('/api/productos', { headers: getHeaders(false) }); const inventario = await resInv.json();
                 const hoy = new Date(); hoy.setHours(0,0,0,0);
-                
                 const futuros = agenda.filter(e => new Date(e.fecha) >= hoy).sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
                 const listaEv = document.getElementById('dash-eventos');
-                
-                if(futuros.length === 0) {
-                    listaEv.innerHTML = '<li style="padding: 20px; color: #7f8c8d; text-align: center;">No tenés próximos eventos agendados.</li>';
-                } else {
-                    listaEv.innerHTML = futuros.map(e => `
-                        <li class="fila-inventario" style="padding: 12px 20px; border-left: 4px solid #3498db;">
-                            <div style="flex: 2;"><strong style="color:#2c3e50; font-size: 1.1em;">${e.cliente}</strong><br><span style="font-size: 0.9em; color: #e67e22; font-weight: bold;"><i class="ti ti-calendar"></i> ${new Date(e.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</span></div>
-                            <div style="text-align:right;"><span style="color:#27ae60; font-weight:bold; font-size: 1.1em;">$${formatoMoneda(e.cotizacion_total)}</span></div>
-                        </li>
-                    `).join('');
+                if(futuros.length === 0) { listaEv.innerHTML = '<li style="padding: 20px; color: #7f8c8d; text-align: center;">No tenés próximos eventos agendados.</li>'; } else {
+                    listaEv.innerHTML = futuros.map(e => `<li class="fila-inventario" style="padding: 12px 20px; border-left: 4px solid #3498db;"><div style="flex: 2;"><strong style="color:#2c3e50; font-size: 1.1em;">${e.cliente}</strong><br><span style="font-size: 0.9em; color: #e67e22; font-weight: bold;"><i class="ti ti-calendar"></i> ${new Date(e.fecha).toLocaleDateString('es-AR', {timeZone: 'UTC'})}</span></div><div style="text-align:right;"><span style="color:#27ae60; font-weight:bold; font-size: 1.1em;">$${formatoMoneda(e.cotizacion_total)}</span></div></li>`).join('');
                 }
 
-                // Aseguramos que el stock sea numérico
-                let stockProyectado = inventario.map(p => ({ ...p, stock: parseFloat(p.stock) || 0 }));
+                let stockProyectado = inventarioGlobal.map(p => ({ ...p, stock: parseFloat(p.stock) || 0 }));
                 let alertasStock = [];
 
                 futuros.forEach(evento => {
@@ -261,12 +448,9 @@
                         insumosRequeridos.forEach(insumo => {
                             let itemEnStock = stockProyectado.find(p => p.nombre.toLowerCase() === insumo.ingrediente.toLowerCase());
                             if (itemEnStock) { 
-                                // ACÁ OCURRE LA MAGIA: Dividimos los ML necesarios por el tamaño del envase, para saber cuántas botellas restar.
                                 let unidadesConsumidas = insumo.cantidadTotal / itemEnStock.cantidad;
                                 itemEnStock.stock -= unidadesConsumidas; 
-                            } else { 
-                                alertasStock.push({ nombre: insumo.ingrediente, faltante: insumo.cantidadTotal, unidad: insumo.unidad }); 
-                            }
+                            } else { alertasStock.push({ nombre: insumo.ingrediente, faltante: insumo.cantidadTotal, unidad: insumo.unidad }); }
                         });
                     }
                 });
@@ -276,155 +460,10 @@
                 });
 
                 const listaAl = document.getElementById('dash-alertas');
-                if(alertasStock.length === 0) {
-                    listaAl.innerHTML = '<div style="text-align:center; padding: 30px; color:#27ae60;"><i class="ti ti-circle-check" style="font-size:3em;"></i><br><strong style="font-size:1.2em;">Todo en orden</strong><br>Tenés stock suficiente para cubrir los próximos eventos.</div>';
-                } else {
-                    listaAl.innerHTML = alertasStock.map(a => `
-                        <li style="border-left: 4px solid ${a.stock_cero ? '#f39c12' : '#e74c3c'}; background: ${a.stock_cero ? '#fff8e1' : '#fdf0ed'}; padding: 12px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
-                            <strong style="color: #2c3e50;">${a.nombre}</strong>
-                            <span style="color: ${a.stock_cero ? '#d35400' : '#c0392b'}; font-weight: bold; font-size: 0.9em;">
-                                ${a.stock_cero ? '<i class="ti ti-alert-circle"></i> Stock quedará en 0' : `<i class="ti ti-arrow-down"></i> Faltan comprar: ${a.faltante.toFixed(1)} ${a.unidad}`}
-                            </span>
-                        </li>
-                    `).join('');
+                if(alertasStock.length === 0) { listaAl.innerHTML = '<div style="text-align:center; padding: 30px; color:#27ae60;"><i class="ti ti-circle-check" style="font-size:3em;"></i><br><strong style="font-size:1.2em;">Todo en orden</strong><br>Tenés stock suficiente para cubrir los próximos eventos.</div>'; } else {
+                    listaAl.innerHTML = alertasStock.map(a => `<li style="border-left: 4px solid ${a.stock_cero ? '#f39c12' : '#e74c3c'}; background: ${a.stock_cero ? '#fff8e1' : '#fdf0ed'}; padding: 12px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;"><strong style="color: #2c3e50;">${a.nombre}</strong><span style="color: ${a.stock_cero ? '#d35400' : '#c0392b'}; font-weight: bold; font-size: 0.9em;">${a.stock_cero ? '<i class="ti ti-alert-circle"></i> Stock quedará en 0' : `<i class="ti ti-arrow-down"></i> Faltan comprar: ${Math.ceil(a.faltante)} ${a.unidad}`}</span></li>`).join('');
                 }
             } catch (e) { console.error("Error cargando Dashboard:", e); }
-        }
-
-        // --- INVENTARIO (CON CÓDIGO DE BARRAS Y STOCK) ---
-        function filtrarInventario() { const categoriaElegida = document.getElementById('filtro-inventario').value; document.querySelectorAll('#lista-categorias li:not(.encabezado-tabla)').forEach(li => { const categoriaItem = li.getAttribute('data-categoria'); li.style.display = (categoriaElegida === '' || categoriaItem === categoriaElegida) ? 'flex' : 'none'; }); }
-
-        async function cargarSelectCategorias() { try { const res = await fetch('/api/categorias', { headers: getHeaders(false) }); const categorias = await res.json(); const selectFiltro = document.getElementById('filtro-inventario'); selectFiltro.innerHTML = '<option value="">Todas las categorías</option>'; categorias.forEach(c => { selectFiltro.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`; }); } catch (e) { console.error(e); } }
-
-        async function abrirModalCrearProducto() {
-            const opcionesCategoria = Array.from(document.getElementById('filtro-inventario').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
-            const { value: formValues } = await Swal.fire({ 
-                title: '<i class="ti ti-plus"></i> Nuevo Producto', 
-                html: `
-                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
-                        <label style="font-weight: bold;">Código de Barras / QR (Opcional)</label>
-                        <input id="swal-crear-codigo" class="swal2-input" placeholder="Clickeá y escaneá con pistola o cámara" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
-                        
-                        <label style="font-weight: bold;">Nombre (Ej: Jugo Cepita naranja 1L)</label>
-                        <input id="swal-crear-nombre" class="swal2-input" placeholder="Nombre completo" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
-                        
-                        <label style="font-weight: bold;">Categoría</label>
-                        <select id="swal-crear-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="">Seleccionar categoría...</option>${opcionesCategoria}</select>
-                        
-                        <div style="display: flex; gap: 10px;">
-                            <div style="flex: 1;"><label style="font-weight: bold;">Formato del envase</label><input id="swal-crear-cantidad" type="number" class="swal2-input" placeholder="Ej. 1000" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
-                            <div style="flex: 1;"><label style="font-weight: bold;">Unidad de medida</label><select id="swal-crear-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros">Litros (L)</option><option value="ml">Mililitros (ml)</option><option value="Kg">Kilogramos (Kg)</option><option value="Gramos">Gramos (g)</option><option value="Unidades">Unidades (u)</option></select></div>
-                        </div>
-
-                        <div style="display: flex; gap: 10px; margin-top: 5px;">
-                            <div style="flex: 1;">
-                                <label style="font-weight: bold; color: #2980b9;"><i class="ti ti-layers-intersect"></i> Stock Físico (Botellas)</label>
-                                <input id="swal-crear-stock" type="number" class="swal2-input" placeholder="Ej. 600" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box; border-left: 4px solid #2980b9;">
-                            </div>
-                            <div style="flex: 1;">
-                                <label style="font-weight: bold;">Costo Unitario ($)</label>
-                                <input id="swal-crear-precio" type="number" class="swal2-input" placeholder="Ej. 1855" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
-                            </div>
-                        </div>
-                    </div>
-                `, 
-                showCancelButton: true, confirmButtonColor: '#2ecc71', cancelButtonColor: '#95a5a6', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Producto', focusConfirm: false, 
-                preConfirm: () => { 
-                    const nombre = document.getElementById('swal-crear-nombre').value, tipo = document.getElementById('swal-crear-tipo').value, cantidad = parseFloat(document.getElementById('swal-crear-cantidad').value), unidad_medida = document.getElementById('swal-crear-unidad').value, precio = parseFloat(document.getElementById('swal-crear-precio').value), codigo_barras = document.getElementById('swal-crear-codigo').value, stock = parseFloat(document.getElementById('swal-crear-stock').value); 
-                    if (!nombre || !tipo || isNaN(cantidad) || isNaN(precio)) { Swal.showValidationMessage('Completá los campos obligatorios para continuar'); return false; } 
-                    return { nombre, tipo, cantidad, unidad_medida, precio, codigo_barras, stock }; 
-                } 
-            });
-            if (formValues) { try { if ((await fetch('/api/productos', { method: 'POST', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarCategorias(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Producto guardado' }); } } catch (e) { console.error(e); } }
-        }
-
-        async function crearCategoria() { const { value: nombre } = await Swal.fire({ title: 'Nueva Categoría', input: 'text', inputLabel: 'Nombre de la categoría', showCancelButton: true, confirmButtonColor: '#2ecc71', confirmButtonText: 'Crear' }); if (!nombre || nombre.trim() === '') return; if ((await fetch('/api/categorias', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ nombre }) })).ok) { Toast.fire({ icon: 'success', title: 'Categoría agregada' }); cargarSelectCategorias(); } }
-        
-        function importarExcel() { const fileInput = document.getElementById('archivo-excel'); if (!fileInput.files.length) return Swal.fire('Atención', 'Seleccioná un archivo Excel.', 'warning'); const reader = new FileReader(); reader.onload = async (e) => { const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'}); const sheet = workbook.Sheets[workbook.SheetNames[0]]; const jsonData = XLSX.utils.sheet_to_json(sheet); const productos = jsonData.map(row => ({ nombre: row.Nombre || row.nombre, tipo: row.Categoria || row.categoria || "Otros", cantidad: parseFloat(row.Cantidad || row.cantidad || 1), unidad_medida: row.Unidad || row.unidad || "Unidades", precio: parseFloat(row.Precio || row.precio || 0) })); try { Swal.fire({ title: 'Importando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } }); if ((await fetch('/api/productos/bulk', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ productos }) })).ok) { Swal.fire('¡Listo!', `Importados.`, 'success'); fileInput.value = ''; cargarCategorias(); cargarSelectCategorias(); cargarDashboard(); } else Swal.fire("Error", "Error en el servidor.", "error"); } catch (error) { console.error(error); } }; reader.readAsArrayBuffer(fileInput.files[0]); }
-
-        async function cargarCategorias() {
-            try {
-                const res = await fetch('/api/productos', { headers: getHeaders(false) }); const datos = await res.json(); 
-                const lista = document.getElementById('lista-categorias'), selIng = document.getElementById('select-ingredientes');
-                lista.innerHTML = `
-                    <li class="encabezado-tabla">
-                        <div style="flex: 2; min-width: 180px;">Producto</div><div style="flex: 1; min-width: 120px;">Categoría</div>
-                        <div style="flex: 1; min-width: 100px;">Detalles</div><div style="flex: 1; min-width: 100px;">Costo</div><div style="flex: 0.5; text-align: right;">Acciones</div>
-                    </li>`;
-                selIng.innerHTML = '<option value="">Seleccionar ingrediente...</option>'; 
-                datos.forEach(p => {
-                    let iconoCodigo = p.codigo_barras ? '<i class="ti ti-barcode" title="Con Código de Barras" style="color: #3498db;"></i> ' : '';
-                    lista.innerHTML += `
-                    <li class="fila-inventario" data-categoria="${p.tipo}" style="border-left: 5px solid #3498db;">
-                        <div style="flex: 2; min-width: 180px;"><strong style="font-size: 1.1em; color: #2c3e50;">${iconoCodigo}${p.nombre}</strong></div>
-                        <div style="flex: 1; min-width: 120px; color: #666; font-size: 0.9em;"><i class="ti ti-folder"></i> ${p.tipo}</div>
-                        <div style="flex: 1; min-width: 100px; color: #888; font-size: 0.9em;">
-                            <div><i class="ti ti-ruler-measure"></i> Envase: ${p.cantidad} ${p.unidad_medida}</div>
-                            <div style="color: #2980b9; font-weight: bold;"><i class="ti ti-layers-intersect"></i> Stock: ${p.stock || 0} Uds.</div>
-                        </div>
-                        <div style="flex: 1; min-width: 100px; color: #27ae60; font-weight: bold; font-size: 1em;">$${formatoMoneda(p.precio)}</div>
-                        <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
-                            <button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="prepararEdicion(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', '${p.tipo}', ${p.precio}, ${p.cantidad}, '${p.unidad_medida}', '${p.codigo_barras || ''}', ${p.stock || 0})" title="Ver / Editar"><i class="ti ti-eye"></i></button>
-                            <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarProducto(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="ti ti-x"></i></button>
-                        </div>
-                    </li>`;
-                    selIng.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-formato="${p.cantidad}">${p.nombre} (en ${p.unidad_medida})</option>`;
-                });
-            } catch (e) { console.error(e); }
-        }
-
-        async function prepararEdicion(id, nom, tipo, pre, cant, uni, cod, stk) {
-            const opcionesCategoria = Array.from(document.getElementById('filtro-inventario').options).filter(opt => opt.value !== '').map(opt => `<option value="${opt.value}" ${opt.value === tipo ? 'selected' : ''}>${opt.text}</option>`).join('');
-            const valorCodigo = (cod === 'null' || cod === 'undefined' || !cod) ? '' : cod;
-            const { value: formValues } = await Swal.fire({ 
-                title: '<i class="ti ti-eye"></i> Editar Producto', 
-                html: `
-                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
-                        <label style="font-weight: bold;">Código de Barras / QR</label>
-                        <input id="swal-edit-codigo" class="swal2-input" value="${valorCodigo}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
-                        
-                        <label style="font-weight: bold;">Nombre</label>
-                        <input id="swal-edit-nombre" class="swal2-input" value="${nom}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
-                        
-                        <label style="font-weight: bold;">Categoría</label>
-                        <select id="swal-edit-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">${opcionesCategoria}</select>
-                        
-                        <div style="display: flex; gap: 10px;">
-                            <div style="flex: 1;"><label style="font-weight: bold;">Formato del envase</label><input id="swal-edit-cantidad" type="number" class="swal2-input" value="${cant}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
-                            <div style="flex: 1;"><label style="font-weight: bold;">Unidad de medida</label><select id="swal-edit-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros" ${uni==='Litros'?'selected':''}>Litros (L)</option><option value="ml" ${uni==='ml'?'selected':''}>Mililitros (ml)</option><option value="Kg" ${uni==='Kg'?'selected':''}>Kilogramos (Kg)</option><option value="Gramos" ${uni==='Gramos'?'selected':''}>Gramos (g)</option><option value="Unidades" ${uni==='Unidades'?'selected':''}>Unidades (u)</option></select></div>
-                        </div>
-
-                        <div style="display: flex; gap: 10px; margin-top: 5px;">
-                            <div style="flex: 1;">
-                                <label style="font-weight: bold; color: #2980b9;"><i class="ti ti-layers-intersect"></i> Stock Físico (Botellas)</label>
-                                <input id="swal-edit-stock" type="number" class="swal2-input" value="${stk}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box; border-left: 4px solid #2980b9;">
-                            </div>
-                            <div style="flex: 1;">
-                                <label style="font-weight: bold;">Costo Unitario ($)</label>
-                                <input id="swal-edit-precio" type="number" class="swal2-input" value="${pre}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
-                            </div>
-                        </div>
-                    </div>
-                `, 
-                showCancelButton: true, confirmButtonColor: '#3498db', cancelButtonColor: '#e74c3c', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Cambios', focusConfirm: false, 
-                preConfirm: () => { 
-                    return { 
-                        nombre: document.getElementById('swal-edit-nombre').value, 
-                        tipo: document.getElementById('swal-edit-tipo').value, 
-                        cantidad: parseFloat(document.getElementById('swal-edit-cantidad').value), 
-                        unidad_medida: document.getElementById('swal-edit-unidad').value, 
-                        precio: parseFloat(document.getElementById('swal-edit-precio').value),
-                        codigo_barras: document.getElementById('swal-edit-codigo').value,
-                        stock: parseFloat(document.getElementById('swal-edit-stock').value)
-                    } 
-                } 
-            });
-            if (formValues) { if ((await fetch(`/api/productos/${id}`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarCategorias(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Actualizado' }); } }
-        }
-
-        async function borrarProducto(id, nombre) {
-            if (!(await Swal.fire({ title: `¿Borrar "${nombre}"?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Sí, borrar' })).isConfirmed) return;
-            if ((await fetch(`/api/productos/${id}`, { method: 'DELETE', headers: getHeaders(false) })).ok) { cargarCategorias(); cargarDashboard(); Toast.fire({ icon: 'success', title: 'Eliminado' }); }
         }
 
         // --- RECETAS ---
@@ -582,11 +621,10 @@
             }
         }
 
-        // --- SCANNER (Temporales para que no tire error) ---
         function abrirScanner(id) { document.getElementById('modal-scanner').style.display = 'block'; document.getElementById('modal-scanner').scrollIntoView({ behavior: 'smooth' }); }
         function cerrarScanner() { document.getElementById('modal-scanner').style.display = 'none'; }
 
-        window.onload = () => { cargarSelectCategorias(); cargarCategorias(); carTra(); carRec(); carAge(); cargarPlantillasVisuales(); cargarDashboard(); };
+        window.onload = () => { cargarDatosInventario(); carTra(); carRec(); carAge(); cargarPlantillasVisuales(); };
     </script>
 </body>
 </html>
