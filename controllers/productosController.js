@@ -32,9 +32,14 @@ exports.eliminarProveedor = async (req, res) => {
 // 📦 INVENTARIO Y CATEGORÍAS
 exports.getProductos = async (req, res) => {
     try {
-        try { await db.query('ALTER TABLE Ingredientes ADD COLUMN stock DECIMAL(10,2) DEFAULT 0'); } catch(err) {}
-        try { await db.query('ALTER TABLE Ingredientes ADD COLUMN proveedor VARCHAR(255) DEFAULT ""'); } catch(err) {}
-        try { await db.query('ALTER TABLE Ingredientes ADD COLUMN a_granel BOOLEAN DEFAULT FALSE'); } catch(err) {}
+        // Asegurarnos de que las columnas existen ANTES de buscar los datos
+        const [columnas] = await db.query("SHOW COLUMNS FROM Ingredientes");
+        const nombresColumnas = columnas.map(c => c.Field);
+        
+        if (!nombresColumnas.includes('stock')) await db.query('ALTER TABLE Ingredientes ADD COLUMN stock DECIMAL(10,2) DEFAULT 0');
+        if (!nombresColumnas.includes('proveedor')) await db.query('ALTER TABLE Ingredientes ADD COLUMN proveedor VARCHAR(255) DEFAULT ""');
+        if (!nombresColumnas.includes('a_granel')) await db.query('ALTER TABLE Ingredientes ADD COLUMN a_granel BOOLEAN DEFAULT FALSE');
+        if (!nombresColumnas.includes('codigo_barras')) await db.query('ALTER TABLE Ingredientes ADD COLUMN codigo_barras VARCHAR(255)');
 
         const query = `
             SELECT i.id, i.nombre, c.nombre as tipo, i.costo as precio, i.cantidad, i.unidad_medida, i.codigo_barras, i.stock, i.proveedor, i.a_granel 
@@ -42,7 +47,10 @@ exports.getProductos = async (req, res) => {
         `;
         const [filas] = await db.query(query);
         res.json(filas);
-    } catch (e) { res.status(500).json({ error: 'Error al consultar inventario', detalle: e.message }); }
+    } catch (e) { 
+        console.error("Error en inventario:", e);
+        res.status(500).json({ error: 'Error al consultar inventario', detalle: e.message }); 
+    }
 };
 
 exports.getCategorias = async (req, res) => {
