@@ -11,8 +11,8 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: #333; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        .nav-links { display: flex; gap: 10px; }
-        .menu-btn { background: transparent; color: #ecf0f1; border: none; padding: 10px 15px; font-size: 16px; cursor: pointer; border-radius: 5px; transition: background 0.3s; }
+        .nav-links { display: flex; gap: 5px; flex-wrap: wrap; }
+        .menu-btn { background: transparent; color: #ecf0f1; border: none; padding: 10px 12px; font-size: 15px; cursor: pointer; border-radius: 5px; transition: background 0.3s; }
         .menu-btn:hover, .menu-btn.activo { background: #34495e; font-weight: bold; border-bottom: 3px solid #3498db; }
         .btn-logout { background: #e74c3c; font-weight: bold; }
         .main-content { padding: 30px; overflow-y: auto; flex: 1; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box;}
@@ -41,7 +41,7 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        .navbar { background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-bottom: 1px solid #34495e; }
+        .navbar { background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-bottom: 1px solid #34495e; flex-wrap: wrap; gap: 15px;}
         .navbar h1 { margin: 0; font-size: 1.5em; }
 
         button.btn-accion, label.btn-accion { box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease; }
@@ -61,12 +61,13 @@
         <div class="nav-links">
             <button class="menu-btn activo" onclick="cambiarSeccion('sec-dashboard', this)"><i class="ti ti-layout-dashboard"></i> Inicio</button>
             <button class="menu-btn" onclick="cambiarSeccion('sec-catalogo', this)"><i class="ti ti-list"></i> Catálogo</button>
+            <button class="menu-btn" onclick="cambiarSeccion('sec-proveedores', this)"><i class="ti ti-truck"></i> Proveedores</button>
             <button class="menu-btn" onclick="cambiarSeccion('sec-stock', this)"><i class="ti ti-building-warehouse"></i> Depósito</button>
             <button class="menu-btn" onclick="cambiarSeccion('sec-recetas', this)"><i class="ti ti-glass-cocktail"></i> Recetas</button>
             <button class="menu-btn" onclick="cambiarSeccion('sec-eventos', this)"><i class="ti ti-chart-bar"></i> Cotizador</button>
             <button class="menu-btn" onclick="cambiarSeccion('sec-agenda', this)"><i class="ti ti-calendar"></i> Agenda</button>
         </div>
-        <button class="menu-btn btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+        <button class="menu-btn btn-logout" onclick="cerrarSesion()">Salir</button>
     </div>
 
     <div class="main-content">
@@ -85,6 +86,15 @@
                     <ul id="dash-alertas" class="lista-mezcla" style="border-radius: 8px; overflow: hidden; border: 1px solid #eee;"></ul>
                 </div>
             </div>
+        </div>
+
+        <!-- 0. PROVEEDORES (NUEVO) -->
+        <div id="sec-proveedores" class="seccion">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h2 style="margin: 0;">Directorio de Proveedores</h2>
+                <button class="btn-accion" style="background-color: #8e44ad;" onclick="abrirModalCrearProveedor()"><i class="ti ti-user-plus"></i> Añadir Proveedor</button>
+            </div>
+            <ul id="lista-proveedores" class="grid-productos" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"></ul>
         </div>
 
         <!-- 1. CATÁLOGO (Insumos para crear recetas) -->
@@ -109,10 +119,10 @@
             <ul id="lista-catalogo" class="grid-productos" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);"></ul>
         </div>
 
-        <!-- 2. DEPÓSITO / STOCK (Físico y Proveedores) -->
+        <!-- 2. DEPÓSITO / STOCK (Físico) -->
         <div id="sec-stock" class="seccion">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                <h2 style="margin: 0;">Control de Depósito y Proveedores</h2>
+                <h2 style="margin: 0;">Control de Depósito</h2>
             </div>
 
             <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex-wrap: wrap;">
@@ -241,6 +251,7 @@
 
         // --- VARIABLES GLOBALES ---
         let inventarioGlobal = []; 
+        let proveedoresGlobal = []; // NUEVO: Directorio
         let mezclaActual = []; let tragosEventoActual = []; let plantillasGuardadas = [];
         let costoActualReceta = 0; let costoNetoEventoActual = 0; let totalCobrarEventoActual = 0;
         let recetaEditandoId = null; let recetasGuardadasData = []; let tragosPlantillaActual = [];
@@ -256,11 +267,15 @@
         // --- CARGA CENTRALIZADA ---
         async function cargarDatosInventario() {
             try {
+                // Obtenemos todos los datos (Inventario, Categorías y Proveedores)
                 const res = await fetch('/api/productos', { headers: getHeaders(false) }); 
                 inventarioGlobal = await res.json(); 
                 
                 const resCat = await fetch('/api/categorias', { headers: getHeaders(false) }); 
                 const categorias = await resCat.json(); 
+
+                const resProv = await fetch('/api/productos/proveedores', { headers: getHeaders(false) });
+                proveedoresGlobal = await resProv.ok ? await resProv.json() : [];
                 
                 const selCat = document.getElementById('filtro-catalogo');
                 const selStockCat = document.getElementById('filtro-stock-categoria');
@@ -273,17 +288,71 @@
 
                 const selStockProv = document.getElementById('filtro-stock-proveedor');
                 selStockProv.innerHTML = '<option value="">Todos los Proveedores</option>';
-                const proveedoresUnicos = [...new Set(inventarioGlobal.map(p => p.proveedor).filter(p => p && p.trim() !== ''))];
-                proveedoresUnicos.forEach(prov => { selStockProv.innerHTML += `<option value="${prov}">${prov}</option>`; });
+                proveedoresGlobal.forEach(prov => { selStockProv.innerHTML += `<option value="${prov.nombre}">${prov.nombre}</option>`; });
 
                 const selIng = document.getElementById('select-ingredientes');
                 selIng.innerHTML = '<option value="">Seleccionar ingrediente...</option>'; 
                 inventarioGlobal.forEach(p => { selIng.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-formato="${p.cantidad}">${p.nombre} (en ${p.unidad_medida})</option>`; });
 
-                renderizarCatalogo(); renderizarStock(); cargarDashboard(); 
+                renderizarCatalogo(); renderizarStock(); renderizarProveedores(); cargarDashboard(); 
             } catch (e) { console.error(e); }
         }
 
+        // --- PROVEEDORES (NUEVO) ---
+        function renderizarProveedores() {
+            const lista = document.getElementById('lista-proveedores');
+            lista.innerHTML = `
+                <li class="encabezado-tabla" style="background: #8e44ad;">
+                    <div style="flex: 2; min-width: 150px;">Nombre / Empresa</div>
+                    <div style="flex: 1.5; min-width: 150px;">Rubro</div>
+                    <div style="flex: 1.5; min-width: 120px;">Teléfono</div>
+                    <div style="flex: 0.5; text-align: right;">Acciones</div>
+                </li>`;
+            
+            if (proveedoresGlobal.length === 0) { lista.innerHTML += '<li style="padding: 15px; color: #7f8c8d;">No hay proveedores registrados.</li>'; return; }
+            
+            proveedoresGlobal.forEach(p => {
+                lista.innerHTML += `
+                <li class="fila-inventario" style="border-left: 5px solid #8e44ad;">
+                    <div style="flex: 2; min-width: 150px;"><strong style="font-size: 1.1em; color: #2c3e50;"><i class="ti ti-truck"></i> ${p.nombre}</strong></div>
+                    <div style="flex: 1.5; min-width: 150px; color: #666; font-size: 0.9em;">${p.rubro || 'General'}</div>
+                    <div style="flex: 1.5; min-width: 120px; color: #27ae60; font-weight: bold;">${p.telefono ? `<i class="ti ti-phone"></i> ${p.telefono}` : 'S/D'}</div>
+                    <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
+                        <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarProveedor(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+                    </div>
+                </li>`;
+            });
+        }
+
+        async function abrirModalCrearProveedor() {
+            const { value: formValues } = await Swal.fire({ 
+                title: '<i class="ti ti-user-plus"></i> Nuevo Proveedor', 
+                html: `
+                    <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
+                        <label style="font-weight: bold;">Empresa / Nombre</label>
+                        <input id="swal-prov-nombre" class="swal2-input" placeholder="Ej: Distribuidora El Sol" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #8e44ad;">
+                        <label style="font-weight: bold;">¿De qué es proveedor? (Rubro)</label>
+                        <input id="swal-prov-rubro" class="swal2-input" placeholder="Ej: Bebidas blancas, Hielo, Frutas..." style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
+                        <label style="font-weight: bold;">Número de Teléfono (Opcional)</label>
+                        <input id="swal-prov-tel" class="swal2-input" placeholder="Ej: +54 9 11 1234-5678" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
+                    </div>
+                `, 
+                showCancelButton: true, confirmButtonColor: '#8e44ad', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar', focusConfirm: false, 
+                preConfirm: () => { 
+                    const n = document.getElementById('swal-prov-nombre').value;
+                    if (!n) { Swal.showValidationMessage('El nombre es obligatorio'); return false; } 
+                    return { nombre: n, rubro: document.getElementById('swal-prov-rubro').value, telefono: document.getElementById('swal-prov-tel').value }; 
+                } 
+            });
+            if (formValues) { try { if ((await fetch('/api/productos/proveedores', { method: 'POST', headers: getHeaders(), body: JSON.stringify(formValues) })).ok) { cargarDatosInventario(); Toast.fire({ icon: 'success', title: 'Proveedor guardado' }); } } catch (e) { console.error(e); } }
+        }
+
+        async function borrarProveedor(id, nombre) {
+            if (!(await Swal.fire({ title: `¿Borrar "${nombre}"?`, text: 'No se borrarán los productos que le compraste, solo el contacto', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', confirmButtonText: 'Sí, borrar' })).isConfirmed) return;
+            if ((await fetch(`/api/productos/proveedores/${id}`, { method: 'DELETE', headers: getHeaders(false) })).ok) { cargarDatosInventario(); Toast.fire({ icon: 'success', title: 'Eliminado' }); }
+        }
+
+        // --- FILTROS ---
         function filtrarVista(tipo) {
             const elegido = document.getElementById(`filtro-${tipo}`).value;
             document.querySelectorAll(`#lista-${tipo} li:not(.encabezado-tabla)`).forEach(li => {
@@ -294,7 +363,6 @@
         function filtrarVistaStock() {
             const catElegida = document.getElementById('filtro-stock-categoria').value;
             const provElegido = document.getElementById('filtro-stock-proveedor').value;
-            
             document.querySelectorAll('#lista-stock li:not(.encabezado-tabla)').forEach(li => {
                 const matchCat = catElegida === '' || li.getAttribute('data-categoria') === catElegida;
                 const matchProv = provElegido === '' || li.getAttribute('data-proveedor') === provElegido;
@@ -361,20 +429,16 @@
                     <div style="text-align: left; margin-top: 10px; font-size: 0.9em;">
                         <label style="font-weight: bold;">Código de Barras / QR</label>
                         <input id="swal-crear-codigo" class="swal2-input" placeholder="Clickeá y escaneá con pistola o cámara" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #3498db;">
-                        
                         <label style="font-weight: bold;">Nombre (Ej: Jugo Cepita naranja 1L)</label>
                         <input id="swal-crear-nombre" class="swal2-input" placeholder="Nombre completo" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
-                        
                         <label style="font-weight: bold;">Categoría</label>
                         <select id="swal-crear-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="">Seleccionar categoría...</option>${opcionesCategoria}</select>
-                        
                         <div style="margin-bottom: 15px;">
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #fff3cd; padding: 10px; border-radius: 4px; border: 1px solid #ffeeba;">
                                 <input type="checkbox" id="swal-crear-granel" style="width: 20px; height: 20px;">
                                 <strong style="color: #856404;">Es un insumo a Granel (Bolsas, Bidones, Cajas grandes)</strong>
                             </label>
                         </div>
-
                         <div style="display: flex; gap: 10px;">
                             <div style="flex: 1;"><label style="font-weight: bold;">Formato de Uso</label><input id="swal-crear-cantidad" type="number" class="swal2-input" placeholder="Ej. 1000" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
                             <div style="flex: 1;"><label style="font-weight: bold;">Unidad de medida</label><select id="swal-crear-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros">Litros (L)</option><option value="ml">Mililitros (ml)</option><option value="Kg">Kilogramos (Kg)</option><option value="Gramos">Gramos (g)</option><option value="Unidades">Unidades (u)</option></select></div>
@@ -407,27 +471,25 @@
                         <input id="swal-edit-nombre" class="swal2-input" value="${p.nombre}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">
                         <label style="font-weight: bold;">Categoría</label>
                         <select id="swal-edit-tipo" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;">${opcionesCategoria}</select>
-                        
                         <div style="margin-bottom: 15px;">
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: #fff3cd; padding: 10px; border-radius: 4px; border: 1px solid #ffeeba;">
                                 <input type="checkbox" id="swal-edit-granel" style="width: 20px; height: 20px;" ${p.a_granel ? 'checked' : ''}>
                                 <strong style="color: #856404;">Es un insumo a Granel (Bolsas, Bidones, Cajas grandes)</strong>
                             </label>
                         </div>
-
                         <div style="display: flex; gap: 10px;">
-                            <div style="flex: 1;"><label style="font-weight: bold;">Formato de Uso</label><input id="swal-edit-cantidad" type="number" class="swal2-input" value="${p.cantidad}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
+                            <div style="flex: 1;"><label style="font-weight: bold;">Formato</label><input id="swal-edit-cantidad" type="number" class="swal2-input" value="${p.cantidad}" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"></div>
                             <div style="flex: 1;"><label style="font-weight: bold;">Unidad</label><select id="swal-edit-unidad" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box;"><option value="Litros" ${p.unidad_medida==='Litros'?'selected':''}>Litros (L)</option><option value="ml" ${p.unidad_medida==='ml'?'selected':''}>Mililitros (ml)</option><option value="Kg" ${p.unidad_medida==='Kg'?'selected':''}>Kilogramos (Kg)</option><option value="Gramos" ${p.unidad_medida==='Gramos'?'selected':''}>Gramos (g)</option><option value="Unidades" ${p.unidad_medida==='Unidades'?'selected':''}>Unidades (u)</option></select></div>
                         </div>
                         <label style="font-weight: bold;">Costo Unitario ($)</label>
                         <input id="swal-edit-precio" type="number" class="swal2-input" value="${p.precio}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box;">
                     </div>
                 `, 
-                showCancelButton: true, confirmButtonColor: '#3498db', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar Cambios', focusConfirm: false, 
+                showCancelButton: true, confirmButtonColor: '#3498db', confirmButtonText: '<i class="ti ti-device-floppy"></i> Guardar', focusConfirm: false, 
                 preConfirm: () => { 
                     return { 
                         nombre: document.getElementById('swal-edit-nombre').value, tipo: document.getElementById('swal-edit-tipo').value, cantidad: parseFloat(document.getElementById('swal-edit-cantidad').value), unidad_medida: document.getElementById('swal-edit-unidad').value, precio: parseFloat(document.getElementById('swal-edit-precio').value), codigo_barras: document.getElementById('swal-edit-codigo').value, a_granel: document.getElementById('swal-edit-granel').checked,
-                        stock: p.stock, proveedor: p.proveedor // Conservamos el stock oculto para que no se pierda
+                        stock: p.stock, proveedor: p.proveedor
                     } 
                 } 
             });
@@ -437,6 +499,10 @@
         async function editarStock(id) {
             const p = inventarioGlobal.find(x => x.id === id);
             const badgeGranel = p.a_granel ? ` <span style="background:#f39c12; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left: 5px;">A Granel</span>` : '';
+            
+            // Llenamos el select con los proveedores del directorio
+            const opcionesProv = proveedoresGlobal.map(pr => `<option value="${pr.nombre}" ${pr.nombre === p.proveedor ? 'selected' : ''}>${pr.nombre}</option>`).join('');
+
             const { value: formValues } = await Swal.fire({ 
                 title: '<i class="ti ti-building-warehouse"></i> Actualizar Stock', 
                 html: `
@@ -444,8 +510,11 @@
                         <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 15px; border: 1px solid #ddd;">
                             <strong>Insumo:</strong> ${p.nombre} ${badgeGranel}<br><strong>Envase Unitario:</strong> ${p.cantidad} ${p.unidad_medida}
                         </div>
-                        <label style="font-weight: bold;">Proveedor / Distribuidora</label>
-                        <input id="swal-edit-proveedor" class="swal2-input" value="${p.proveedor || ''}" placeholder="Ej. Mayorista El Sol" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #8e44ad;">
+                        <label style="font-weight: bold;">Proveedor / Empresa</label>
+                        <select id="swal-edit-proveedor" class="swal2-input" style="width: 100%; margin: 5px 0 15px 0; box-sizing: border-box; border-left: 4px solid #8e44ad;">
+                            <option value="">Sin proveedor asignado</option>
+                            ${opcionesProv}
+                        </select>
                         <label style="font-weight: bold;">Cantidad Física Total en Depósito</label>
                         <input id="swal-edit-stock" type="number" class="swal2-input" value="${p.stock || 0}" style="width: 100%; margin: 5px 0 0 0; box-sizing: border-box; border-left: 4px solid #27ae60;">
                     </div>
@@ -454,7 +523,7 @@
                 preConfirm: () => { 
                     return { 
                         stock: parseFloat(document.getElementById('swal-edit-stock').value), proveedor: document.getElementById('swal-edit-proveedor').value,
-                        nombre: p.nombre, tipo: p.tipo, cantidad: p.cantidad, unidad_medida: p.unidad_medida, precio: p.precio, codigo_barras: p.codigo_barras, a_granel: p.a_granel // Conservamos el resto
+                        nombre: p.nombre, tipo: p.tipo, cantidad: p.cantidad, unidad_medida: p.unidad_medida, precio: p.precio, codigo_barras: p.codigo_barras, a_granel: p.a_granel
                     } 
                 } 
             });
@@ -642,7 +711,6 @@
                     <div style="flex: 1.5; min-width: 150px; color: #666; font-size: 0.9em;"><i class="ti ti-map-pin"></i> ${e.direccion || 'Sin definir'}</div>
                     <div style="flex: 1; min-width: 120px; color: #27ae60; font-weight: bold; font-size: 1em;">$${formatoMoneda(e.cotizacion_total)}</div>
                     <div style="display: flex; gap: 15px; justify-content: flex-end; flex: 0.5;">
-                        ${e.insumos && e.insumos.length > 2 ? `<button class="btn-icon" style="font-size: 1.3em; color: #3498db;" onclick="abrirScanner(${e.id})" title="Armar Cajas"><i class="ti ti-box"></i></button>` : ''}
                         <button class="btn-icon" style="font-size: 1.3em; color: #e74c3c;" onclick="borrarAgendaConfirm(${e.id}, '${e.cliente}')"><i class="ti ti-x"></i></button>
                     </div>
                     ${e.detalles ? `<div style="width: 100%; font-size: 0.85em; color: #7f8c8d; margin-top: 8px;"><i class="ti ti-notes"></i> <em>"${e.detalles}"</em></div>` : ''}
@@ -661,9 +729,6 @@
                 toggleFormulario('form-agenda'); carAge(); cargarDashboard();
             }
         }
-
-        function abrirScanner(id) { document.getElementById('modal-scanner').style.display = 'block'; document.getElementById('modal-scanner').scrollIntoView({ behavior: 'smooth' }); }
-        function cerrarScanner() { document.getElementById('modal-scanner').style.display = 'none'; }
 
         window.onload = () => { cargarDatosInventario(); carTra(); carRec(); carAge(); cargarPlantillasVisuales(); };
     </script>
